@@ -68,7 +68,9 @@ Notes:
   Micrometer percentiles cannot be represented as an OpenTelemetry histogram, but percentiles and
   service level objectives can additionally be emitted as `<name>.percentile` and
   `<name>.histogram` gauges by enabling the experimental
-  `Experimental#setMicrometerHistogramGaugesEnabled`.
+  `Experimental#setMicrometerHistogramGaugesEnabled`. That setting does not apply to the
+  `LongTaskTimer`, which is not bridged to an OpenTelemetry histogram at all; its percentile and
+  service level objective gauges are always emitted when they are configured on the meter.
 - Descriptions are deduplicated by instrument name within each registry, because in OpenTelemetry
   the description is one of an instrument's identifying fields. The first description registered
   for a name in that registry wins.
