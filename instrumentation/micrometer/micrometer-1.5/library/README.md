@@ -53,46 +53,75 @@ applied. The default convention passes the name through unchanged; see
 | `LongTaskTimer`       | asynchronous long up-down counter, asynchronous double up-down counter | `<name>.active`, `<name>.duration` | `{tasks}`, base time unit      |
 | `FunctionCounter`     | asynchronous double counter                                            | `<name>`                           | base unit                      |
 | `FunctionTimer`       | asynchronous long counter, asynchronous double counter                 | `<name>.count`, `<name>.sum`       | `{invocation}`, base time unit |
-| `Meter` (custom)      | one instrument per `Measurement`, see below                            | `<name>.<statistic>`               | base unit                      |
+| `Meter` (custom)      | one instrument per `Measurement`, see [below](#custom-meters)          | `<name>.<statistic>`               | base unit                      |
 
-Notes:
+### Names and attributes
 
-- Micrometer tags become OpenTelemetry attributes. Meter names and tag keys both pass through the
-  registry's naming convention, and metrics are emitted under the instrumentation scope
-  `io.opentelemetry.micrometer-1.5`.
-- Base units are used verbatim rather than translated to [UCUM](https://ucum.org/), so a base unit
-  of `bytes` stays `bytes` rather than becoming `By`. The base time unit defaults to seconds and can
-  be changed with `OpenTelemetryMeterRegistryBuilder.setBaseTimeUnit(TimeUnit)`.
-- Only Micrometer's service level objectives become explicit bucket boundaries advice;
-  `publishPercentileHistogram()`, `minimumExpectedValue`, and `maximumExpectedValue` do not.
-  Micrometer percentiles cannot be represented as an OpenTelemetry histogram, but percentiles and
-  service level objectives can additionally be emitted as `<name>.percentile` and
-  `<name>.histogram` gauges by enabling the experimental
-  `Experimental#setMicrometerHistogramGaugesEnabled`. That setting does not apply to the
-  `LongTaskTimer`, which is not bridged to an OpenTelemetry histogram at all; its percentile and
-  service level objective gauges are always emitted when they are configured on the meter.
-- Descriptions are deduplicated by instrument name within each registry, because in OpenTelemetry
-  the description is one of an instrument's identifying fields. The first description registered
-  for a name in that registry wins.
-- The `<name>.max` gauge is deprecated and will be removed in 3.0. It is no longer emitted when
-  `otel.instrumentation.common.v3-preview` is enabled.
-- For a custom `Meter`, each measurement's `Statistic` determines the instrument type: `COUNT`,
-  `TOTAL`, and `TOTAL_TIME` become an asynchronous double counter, `ACTIVE_TASKS` becomes an
-  asynchronous double up-down counter, and `DURATION`, `MAX`, `VALUE`, and `UNKNOWN` become an
-  asynchronous double gauge. The name suffix is the statistic's Micrometer tag value, except for
-  `TOTAL_TIME`, which uses `total_time` so that it does not clash with `TOTAL`. Before
-  `otel.instrumentation.common.v3-preview` is enabled, the naming convention is applied to the
-  combined name and suffix instead of to the name alone, so in
-  [Prometheus mode](#prometheus-mode) a custom `Meter` of type `COUNTER` named `my.meter` with the
-  base unit `bytes` is emitted as `my.meter.count.bytes` rather than `my.meter.bytes.count`.
-- Reading measurements back through the Micrometer API is not supported, because the bridge only
-  forwards them to OpenTelemetry. `measure()` returns an empty list on every bridged meter, and
-  `Counter#count()`, `Gauge#value()`, `FunctionCounter#count()`, and `FunctionTimer`'s `count()`,
-  `totalTime(TimeUnit)`, and `mean(TimeUnit)` return `NaN`. `Timer` and `DistributionSummary` keep
-  their count and total locally only when the meter is configured with percentiles, a percentile
-  histogram, or service level objectives and the gauges above are enabled, and otherwise return `0`
-  and `NaN`; their `max()`, and every `LongTaskTimer` read other than `measure()`, always return
-  real values. The first unsupported read logs a warning.
+Micrometer tags become OpenTelemetry attributes. Meter names and tag keys both pass through the
+registry's naming convention, and metrics are emitted under the instrumentation scope
+`io.opentelemetry.micrometer-1.5`.
+
+The `<name>.max` gauge is deprecated and will be removed in 3.0. It is no longer emitted when
+`otel.instrumentation.common.v3-preview` is enabled.
+
+### Units
+
+Base units are used verbatim rather than translated to [UCUM](https://ucum.org/), so a base unit of
+`bytes` stays `bytes` rather than becoming `By`. The base time unit defaults to seconds and can be
+changed with `OpenTelemetryMeterRegistryBuilder.setBaseTimeUnit(TimeUnit)`.
+
+### Descriptions
+
+Descriptions are deduplicated by instrument name within each registry, because in OpenTelemetry the
+description is one of an instrument's identifying fields. The first description registered for a
+name in that registry wins.
+
+### Histograms, percentiles, and service level objectives
+
+Only Micrometer's service level objectives become explicit bucket boundaries advice;
+`publishPercentileHistogram()`, `minimumExpectedValue`, and `maximumExpectedValue` do not.
+
+Micrometer percentiles cannot be represented as an OpenTelemetry histogram, but percentiles and
+service level objectives can additionally be emitted as `<name>.percentile` and `<name>.histogram`
+gauges by enabling the experimental `Experimental#setMicrometerHistogramGaugesEnabled`.
+
+That setting does not apply to the `LongTaskTimer`, which is not bridged to an OpenTelemetry
+histogram at all; its percentile and service level objective gauges are always emitted when they are
+configured on the meter.
+
+### Custom meters
+
+For a custom `Meter`, each measurement's `Statistic` determines the instrument type and the name:
+
+| `Statistic`    | OpenTelemetry instrument            | Name                |
+| -------------- | ----------------------------------- | ------------------- |
+| `COUNT`        | asynchronous double counter         | `<name>.count`      |
+| `TOTAL`        | asynchronous double counter         | `<name>.total`      |
+| `TOTAL_TIME`   | asynchronous double counter         | `<name>.total_time` |
+| `ACTIVE_TASKS` | asynchronous double up-down counter | `<name>.active`     |
+| `DURATION`     | asynchronous double gauge           | `<name>.duration`   |
+| `MAX`          | asynchronous double gauge           | `<name>.max`        |
+| `VALUE`        | asynchronous double gauge           | `<name>.value`      |
+| `UNKNOWN`      | asynchronous double gauge           | `<name>.unknown`    |
+
+The suffix is the statistic's Micrometer tag value, except for `TOTAL_TIME`, which uses `total_time`
+so that it does not clash with `TOTAL`.
+
+### Reading values back
+
+Reading measurements back through the Micrometer API is not supported, because the bridge only
+forwards them to OpenTelemetry. The first unsupported read logs a warning.
+
+| Read                                                                                                                                                        | Result                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `measure()` on any bridged meter                                                                                                                            | empty list                                                             |
+| `Counter#count()`, `Gauge#value()`, `FunctionCounter#count()`, `FunctionTimer#count()`, `FunctionTimer#totalTime(TimeUnit)`, `FunctionTimer#mean(TimeUnit)` | `NaN`                                                                  |
+| `Timer#count()`, `Timer#totalTime(TimeUnit)`, `DistributionSummary#count()`, `DistributionSummary#totalAmount()`                                            | real only when local state is kept, see below; otherwise `0` and `NaN` |
+| `Timer#max(TimeUnit)`, `DistributionSummary#max()`, every `LongTaskTimer` read other than `measure()`                                                       | real                                                                   |
+
+`Timer` and `DistributionSummary` keep their count and total locally only when the meter is
+configured with percentiles, a percentile histogram, or service level objectives and the
+[histogram gauges](#histograms-percentiles-and-service-level-objectives) are enabled.
 
 ### Prometheus mode
 
@@ -107,3 +136,8 @@ disabled by default and should only be enabled for Prometheus compatibility.
 MeterRegistry meterRegistry =
     OpenTelemetryMeterRegistry.builder(openTelemetry).setPrometheusMode(true).build();
 ```
+
+For [custom meters](#custom-meters), the naming convention is applied to the combined name and
+suffix instead of to the name alone, unless `otel.instrumentation.common.v3-preview` is enabled. A
+custom `Meter` of type `COUNTER` named `my.meter` with the base unit `bytes` is therefore emitted as
+`my.meter.count.bytes` rather than `my.meter.bytes.count`.
