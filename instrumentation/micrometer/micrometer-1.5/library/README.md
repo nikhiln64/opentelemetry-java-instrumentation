@@ -89,8 +89,8 @@ service level objectives can additionally be emitted as `<name>.percentile` and 
 gauges by enabling the experimental `Experimental#setMicrometerHistogramGaugesEnabled`.
 
 That setting does not apply to the `LongTaskTimer`, which is not bridged to an OpenTelemetry
-histogram at all; its percentile and service level objective gauges are always emitted when they are
-configured on the meter.
+histogram at all; its configured percentiles, percentile-histogram buckets, and service level
+objectives are always emitted as gauges.
 
 ### Custom meters
 
