@@ -85,6 +85,14 @@ Notes:
   combined name and suffix instead of to the name alone, so in
   [Prometheus mode](#prometheus-mode) a custom `Meter` of type `COUNTER` named `my.meter` with the
   base unit `bytes` is emitted as `my.meter.count.bytes` rather than `my.meter.bytes.count`.
+- Reading measurements back through the Micrometer API is not supported, because the bridge only
+  forwards them to OpenTelemetry. `measure()` returns an empty list on every bridged meter, and
+  `Counter#count()`, `Gauge#value()`, `FunctionCounter#count()`, and `FunctionTimer`'s `count()`,
+  `totalTime(TimeUnit)`, and `mean(TimeUnit)` return `NaN`. `Timer` and `DistributionSummary` keep
+  their count and total locally only when the meter is configured with percentiles, a percentile
+  histogram, or service level objectives and the gauges above are enabled, and otherwise return `0`
+  and `NaN`; their `max()`, and every `LongTaskTimer` read other than `measure()`, always return
+  real values. The first unsupported read logs a warning.
 
 ### Prometheus mode
 
