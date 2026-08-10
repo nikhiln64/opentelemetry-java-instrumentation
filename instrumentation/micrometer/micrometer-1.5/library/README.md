@@ -57,8 +57,8 @@ applied. The default convention passes the name through unchanged; see
 
 ### Names and attributes
 
-Micrometer tags become OpenTelemetry attributes. Meter names and tag keys both pass through the
-registry's naming convention, and metrics are emitted under the instrumentation scope
+Micrometer tags become OpenTelemetry attributes. Meter names, tag keys, and tag values all pass
+through the registry's naming convention, and metrics are emitted under the instrumentation scope
 `io.opentelemetry.micrometer-1.5`.
 
 The `<name>.max` gauge is deprecated and will be removed in 3.0. It is no longer emitted when
