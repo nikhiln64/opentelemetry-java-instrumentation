@@ -76,13 +76,15 @@ Notes:
   for a name in that registry wins.
 - The `<name>.max` gauge is deprecated and will be removed in 3.0. It is no longer emitted when
   `otel.instrumentation.common.v3-preview` is enabled.
-- For a custom `Meter`, each measurement's `Statistic` determines the instrument type, and the name
-  suffix is the statistic's Micrometer tag value, except for `TOTAL_TIME`, which uses `total_time`
-  so that it does not clash with `TOTAL`. Before `otel.instrumentation.common.v3-preview` is
-  enabled, the naming convention is applied to the combined name and suffix instead of to the name
-  alone, so in [Prometheus mode](#prometheus-mode) a custom `Meter` of type `COUNTER` named
-  `my.meter` with the base unit `bytes` is emitted as `my.meter.count.bytes` rather than
-  `my.meter.bytes.count`.
+- For a custom `Meter`, each measurement's `Statistic` determines the instrument type: `COUNT`,
+  `TOTAL`, and `TOTAL_TIME` become an asynchronous double counter, `ACTIVE_TASKS` becomes an
+  asynchronous double up-down counter, and `DURATION`, `MAX`, `VALUE`, and `UNKNOWN` become an
+  asynchronous double gauge. The name suffix is the statistic's Micrometer tag value, except for
+  `TOTAL_TIME`, which uses `total_time` so that it does not clash with `TOTAL`. Before
+  `otel.instrumentation.common.v3-preview` is enabled, the naming convention is applied to the
+  combined name and suffix instead of to the name alone, so in
+  [Prometheus mode](#prometheus-mode) a custom `Meter` of type `COUNTER` named `my.meter` with the
+  base unit `bytes` is emitted as `my.meter.count.bytes` rather than `my.meter.bytes.count`.
 
 ### Prometheus mode
 
