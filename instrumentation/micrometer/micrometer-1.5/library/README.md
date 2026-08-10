@@ -126,11 +126,13 @@ configured with percentiles, a percentile histogram, or service level objectives
 ### Prometheus mode
 
 Prometheus mode approximates the naming behavior of Micrometer's `PrometheusMeterRegistry`, for
-users exporting with the Prometheus exporter. It forces the base time unit to seconds and appends
-the unit to the instrument name, so a `Timer` named `my.timer` becomes `my.timer.seconds` and a
-`DistributionSummary` named `my.summary` with the base unit `bytes` becomes `my.summary.bytes`.
-Encoding the unit in the metric name is contrary to the OpenTelemetry naming rules, so this mode is
-disabled by default and should only be enabled for Prometheus compatibility.
+users exporting with the Prometheus exporter. It forces the base time unit to seconds. For counters,
+distribution summaries, and gauges, it appends a non-empty base unit to the instrument name; for
+timers and long task timers, it appends `seconds`. Other meter types do not get a unit suffix. For
+example, a `Timer` named `my.timer` becomes `my.timer.seconds`, and a `DistributionSummary` named
+`my.summary` with the base unit `bytes` becomes `my.summary.bytes`. Encoding the unit in the metric
+name is contrary to the OpenTelemetry naming rules, so this mode is disabled by default and should
+only be enabled for Prometheus compatibility.
 
 ```java
 MeterRegistry meterRegistry =
