@@ -42,7 +42,10 @@ MeterRegistry meterRegistry = OpenTelemetryMeterRegistry.builder(openTelemetry).
 `<name>` below is the Micrometer meter name after the registry's
 [naming convention](https://docs.micrometer.io/micrometer/reference/concepts/naming.html) has been
 applied. The default convention passes the name through unchanged; see
-[Prometheus mode](#prometheus-mode) for the exception.
+[Prometheus mode](#prometheus-mode) for the exception. For [custom meters](#custom-meters), unless
+`otel.instrumentation.common.v3-preview` is enabled, the naming convention is applied after the
+statistic suffix is appended to the raw meter name. Their emitted names may therefore differ from
+the `<name>.<statistic>` form under a custom convention.
 
 | Micrometer instrument | OpenTelemetry instrument(s)                                            | Name(s)                            | Unit                           |
 | --------------------- | ---------------------------------------------------------------------- | ---------------------------------- | ------------------------------ |
