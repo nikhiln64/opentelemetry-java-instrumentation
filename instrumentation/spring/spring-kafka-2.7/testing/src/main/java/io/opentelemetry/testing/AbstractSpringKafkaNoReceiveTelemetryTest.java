@@ -8,6 +8,7 @@ package io.opentelemetry.testing;
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitOldMessagingSemconv;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetrics;
 import static io.opentelemetry.instrumentation.testing.util.TelemetryDataUtil.orderByRootSpanKind;
 import static io.opentelemetry.instrumentation.testing.util.TelemetryDataUtil.orderByRootSpanName;
 import static io.opentelemetry.instrumentation.testing.util.TestLatestDeps.testLatestDeps;
@@ -86,6 +87,15 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                       }
                     },
                     span -> span.hasName("consumer").hasParent(trace.getSpan(2))));
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.spring-kafka-2.7",
+        "testSingleTopic",
+        "testSingleListener",
+        "0",
+        1,
+        1L,
+        null);
   }
 
   @Test
@@ -172,6 +182,24 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
 
               trace.hasSpansSatisfyingExactly(assertions);
             });
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.spring-kafka-2.7",
+        "testSingleTopic",
+        "testSingleListener",
+        "0",
+        2,
+        2L,
+        IllegalArgumentException.class.getName());
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.spring-kafka-2.7",
+        "testSingleTopic",
+        "testSingleListener",
+        "0",
+        1,
+        1L,
+        null);
   }
 
   @Test
@@ -217,6 +245,15 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                             .hasAttributesSatisfyingExactly(
                                 batchProcessAttributes("testBatchTopic", "testBatchListener", 2)),
                     span -> span.hasName("consumer").hasParent(trace.getSpan(0))));
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.spring-kafka-2.7",
+        "testBatchTopic",
+        "testBatchListener",
+        null,
+        1,
+        2L,
+        null);
   }
 
   @Test
@@ -296,6 +333,27 @@ public abstract class AbstractSpringKafkaNoReceiveTelemetryTest extends Abstract
                     span -> span.hasName("consumer").hasParent(trace.getSpan(0)));
               }
             });
+    int failureCount = isLibraryInstrumentationTest() && testLatestDeps() ? 1 : 2;
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.spring-kafka-2.7",
+        "testBatchTopic",
+        "testBatchListener",
+        null,
+        failureCount,
+        (long) failureCount,
+        IllegalArgumentException.class.getName());
+    if (!isLibraryInstrumentationTest() || !testLatestDeps()) {
+      assertProcessMetrics(
+          testing(),
+          "io.opentelemetry.spring-kafka-2.7",
+          "testBatchTopic",
+          "testBatchListener",
+          null,
+          1,
+          1L,
+          null);
+    }
   }
 
   private static List<AttributeAssertion> sendAttributes(String topic, String messageKey) {

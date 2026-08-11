@@ -34,7 +34,7 @@ public class SpringKafkaSingletons {
     if (receiveTelemetryEnabled != null) {
       factory.setMessagingReceiveTelemetryEnabled(receiveTelemetryEnabled);
     }
-    batchProcessInstrumenter = factory.createBatchProcessInstrumenter();
+    batchProcessInstrumenter = factory.createBatchProcessInstrumenter(true);
   }
 
   private static SpringKafkaTelemetry createTelemetry() {

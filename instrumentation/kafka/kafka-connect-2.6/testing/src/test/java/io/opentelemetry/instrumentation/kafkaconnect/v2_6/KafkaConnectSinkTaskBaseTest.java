@@ -318,7 +318,7 @@ abstract class KafkaConnectSinkTaskBaseTest implements TelemetryRetrieverProvide
             // Disable test exporter and force OTLP exporter
             .withEnv("OTEL_TESTING_EXPORTER_ENABLED", "false")
             .withEnv("OTEL_TRACES_EXPORTER", "otlp")
-            .withEnv("OTEL_METRICS_EXPORTER", "none")
+            .withEnv("OTEL_METRICS_EXPORTER", "otlp")
             .withEnv("OTEL_LOGS_EXPORTER", "none")
             .withEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://" + BACKEND_ALIAS + ":" + BACKEND_PORT)
             .withEnv("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")

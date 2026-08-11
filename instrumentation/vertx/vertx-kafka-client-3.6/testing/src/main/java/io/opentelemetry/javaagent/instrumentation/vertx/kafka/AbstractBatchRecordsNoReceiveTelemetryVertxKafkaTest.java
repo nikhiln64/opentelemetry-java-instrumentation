@@ -6,6 +6,9 @@
 package io.opentelemetry.javaagent.instrumentation.vertx.kafka;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessDurationMetrics;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetricPointCounts;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetrics;
 import static io.opentelemetry.instrumentation.testing.util.TelemetryDataUtil.orderByRootSpanKind;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -113,6 +116,24 @@ public abstract class AbstractBatchRecordsNoReceiveTelemetryVertxKafkaTest
                             .hasAttributesSatisfyingExactly(
                                 batchProcessAttributes("testBatchTopic")),
                     span -> span.hasName("batch consumer").hasParent(trace.getSpan(0))));
+    assertProcessDurationMetrics(
+        testing(),
+        "io.opentelemetry.vertx-kafka-client-3.6",
+        "testBatchTopic",
+        hasConsumerGroup() ? "test" : null,
+        null,
+        1,
+        null);
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.vertx-kafka-client-3.6",
+        "testBatchTopic",
+        hasConsumerGroup() ? "test" : null,
+        "0",
+        2,
+        2L,
+        null);
+    assertProcessMetricPointCounts(testing(), "io.opentelemetry.vertx-kafka-client-3.6", 2, 1);
   }
 
   @Order(2)
@@ -165,5 +186,23 @@ public abstract class AbstractBatchRecordsNoReceiveTelemetryVertxKafkaTest
                             .hasAttributesSatisfyingExactly(
                                 withErrorType(batchProcessAttributes("testBatchTopic"))),
                     span -> span.hasName("batch consumer").hasParent(trace.getSpan(0))));
+    assertProcessDurationMetrics(
+        testing(),
+        "io.opentelemetry.vertx-kafka-client-3.6",
+        "testBatchTopic",
+        hasConsumerGroup() ? "test" : null,
+        null,
+        1,
+        IllegalArgumentException.class.getName());
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.vertx-kafka-client-3.6",
+        "testBatchTopic",
+        hasConsumerGroup() ? "test" : null,
+        "0",
+        1,
+        1L,
+        null);
+    assertProcessMetricPointCounts(testing(), "io.opentelemetry.vertx-kafka-client-3.6", 2, 1);
   }
 }

@@ -8,6 +8,7 @@ package io.opentelemetry.instrumentation.kafkaconnect.v2_6;
 import static io.opentelemetry.api.trace.SpanKind.CONSUMER;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetrics;
 import static io.restassured.RestAssured.given;
 import static java.lang.String.format;
 import static org.awaitility.Awaitility.await;
@@ -150,6 +151,8 @@ class MongoKafkaConnectSinkTaskTest extends KafkaConnectSinkTaskBaseTest {
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span -> span.hasName("GET /connectors").hasKind(SpanKind.SERVER).hasNoParent()));
+    assertProcessMetrics(
+        testing, "io.opentelemetry.kafka-connect-2.6", testTopicName, null, null, 1, 1L, null);
   }
 
   @Test
