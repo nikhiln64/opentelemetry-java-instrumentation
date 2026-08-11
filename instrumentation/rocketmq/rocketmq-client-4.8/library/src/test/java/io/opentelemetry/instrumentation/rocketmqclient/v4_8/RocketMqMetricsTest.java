@@ -99,7 +99,13 @@ class RocketMqMetricsTest {
                 asList(message("batch-success"), message("batch-success"))),
             2,
             null,
-            null));
+            null),
+        argumentSet(
+            "batch error",
+            MessageBatch.generateFromList(asList(message("batch-error"), message("batch-error"))),
+            2,
+            new IllegalStateException("test"),
+            IllegalStateException.class.getName()));
   }
 
   @ParameterizedTest
