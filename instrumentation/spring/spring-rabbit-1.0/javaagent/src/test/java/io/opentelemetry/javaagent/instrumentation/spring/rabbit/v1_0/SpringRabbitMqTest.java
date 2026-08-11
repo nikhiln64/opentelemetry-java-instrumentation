@@ -290,7 +290,7 @@ class SpringRabbitMqTest {
   }
 
   @Test
-  void testErrorMetrics() throws Exception {
+  void testErrorMetrics() throws InterruptedException {
     applicationContext
         .getBean(AmqpTemplate.class)
         .convertAndSend(ConsumerConfig.ERROR_QUEUE, "test");
