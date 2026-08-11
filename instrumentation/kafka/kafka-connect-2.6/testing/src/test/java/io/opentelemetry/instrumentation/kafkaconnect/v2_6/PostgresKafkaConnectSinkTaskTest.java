@@ -9,6 +9,7 @@ import static io.opentelemetry.api.trace.SpanKind.CONSUMER;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableDatabaseSemconv;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetrics;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertReceiveMetrics;
 import static io.restassured.RestAssured.given;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -180,7 +181,25 @@ class PostgresKafkaConnectSinkTaskTest extends KafkaConnectSinkTaskBaseTest {
                       .hasParent(trace.getSpan(0)));
         });
     assertProcessMetrics(
-        testing, "io.opentelemetry.kafka-connect-2.6", testTopicName, null, null, 1, 1L, null);
+        testing,
+        "io.opentelemetry.kafka-connect-2.6",
+        testTopicName,
+        null,
+        null,
+        1,
+        receiveTelemetryExplicitlyEnabled() ? null : 1L,
+        null);
+    if (receiveTelemetryExplicitlyEnabled()) {
+      assertReceiveMetrics(
+          testing,
+          "io.opentelemetry.kafka-clients-0.11",
+          testTopicName,
+          "connect-" + CONNECTOR_NAME,
+          null,
+          1,
+          1,
+          null);
+    }
   }
 
   @Test

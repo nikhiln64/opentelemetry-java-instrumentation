@@ -155,6 +155,11 @@ abstract class KafkaConnectSinkTaskBaseTest implements TelemetryRetrieverProvide
     return kafka.getHost() + ":" + kafkaExposedPort;
   }
 
+  protected static boolean receiveTelemetryExplicitlyEnabled() {
+    return Boolean.getBoolean(
+        "otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
+  }
+
   @SafeVarargs
   @SuppressWarnings("varargs")
   protected final void waitAndAssertRelevantTraces(Consumer<TraceAssert>... assertions) {
@@ -366,6 +371,8 @@ abstract class KafkaConnectSinkTaskBaseTest implements TelemetryRetrieverProvide
     StringBuilder options =
         new StringBuilder("-javaagent:/opentelemetry-javaagent.jar -Dotel.javaagent.debug=true");
     appendSystemProperty(options, "otel.semconv-stability.preview");
+    appendSystemProperty(
+        options, "otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
     return options.toString();
   }
 

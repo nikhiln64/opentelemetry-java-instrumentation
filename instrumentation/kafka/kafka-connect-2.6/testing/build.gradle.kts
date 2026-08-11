@@ -50,6 +50,19 @@ tasks {
     systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
   }
 
+  val testMessagingPreviewReceiveTelemetry = register<Test>("testMessagingPreviewReceiveTelemetry") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    jvmArgs(
+      "-Dotel.semconv-stability.preview=messaging",
+      "-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true",
+    )
+    systemProperty(
+      "metadataConfig",
+      "otel.semconv-stability.preview=messaging,otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true",
+    )
+  }
+
   val testBothSemconv = register<Test>("testBothSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -58,6 +71,11 @@ tasks {
   }
 
   check {
-    dependsOn(testStableSemconv, testMessagingPreview, testBothSemconv)
+    dependsOn(
+      testStableSemconv,
+      testMessagingPreview,
+      testMessagingPreviewReceiveTelemetry,
+      testBothSemconv,
+    )
   }
 }

@@ -17,6 +17,7 @@ import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.Messagin
 import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingSpanNameExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.instrumentation.api.instrumenter.InstrumenterBuilder;
+import io.opentelemetry.javaagent.bootstrap.internal.ExperimentalConfig;
 
 public class KafkaConnectSingletons {
 
@@ -45,8 +46,10 @@ public class KafkaConnectSingletons {
                     MessagingOperationType.PROCESS,
                     PROCESS_OPERATION_NAME))
             .addSpanLinksExtractor(spanLinksExtractor)
-            .addOperationMetrics(MessagingProcessMetrics.get())
-            .addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
+            .addOperationMetrics(MessagingProcessMetrics.get());
+    if (!Boolean.TRUE.equals(ExperimentalConfig.get().messagingReceiveInstrumentationEnabled())) {
+      builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
+    }
     setMessagingProcessExceptionEventExtractor(builder);
 
     instrumenter =
