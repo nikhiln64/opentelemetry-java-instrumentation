@@ -132,7 +132,12 @@ class SpringListenerTest extends AbstractJmsTest {
   }
 
   @ParameterizedTest
-  @ValueSource(classes = {AnnotatedListenerConfig.class, ManualListenerConfig.class})
+  @ValueSource(
+      classes = {
+        AnnotatedListenerConfig.class,
+        ManualListenerConfig.class,
+        PlainListenerConfig.class
+      })
   void receivingMessageInSpringListenerGeneratesSpans(Class<? extends AbstractConfig> config) {
     AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(config);
     cleanup.deferCleanup(context);
@@ -200,10 +205,22 @@ class SpringListenerTest extends AbstractJmsTest {
                         "process",
                         false,
                         null)));
-    assertMetrics(testing, true);
+    assertMetrics(
+        testing,
+        true,
+        config == PlainListenerConfig.class
+            ? "io.opentelemetry.jms-1.1"
+            : "io.opentelemetry.spring-jms-2.0");
   }
 
   static void assertMetrics(InstrumentationExtension testing, boolean receiveTelemetryEnabled) {
+    assertMetrics(testing, receiveTelemetryEnabled, "io.opentelemetry.spring-jms-2.0");
+  }
+
+  static void assertMetrics(
+      InstrumentationExtension testing,
+      boolean receiveTelemetryEnabled,
+      String processInstrumentationName) {
     if (!emitStableMessagingSemconv()) {
       assertNoStableMetrics(testing);
       assertNoDeprecatedMetrics(testing);
@@ -216,10 +233,7 @@ class SpringListenerTest extends AbstractJmsTest {
     assertCounter(
         testing, "io.opentelemetry.jms-1.1", "messaging.client.sent.messages", sendAttributes);
     assertHistogram(
-        testing,
-        "io.opentelemetry.spring-jms-2.0",
-        "messaging.process.duration",
-        processAttributes);
+        testing, processInstrumentationName, "messaging.process.duration", processAttributes);
     if (receiveTelemetryEnabled) {
       assertCounter(
           testing,
@@ -232,12 +246,13 @@ class SpringListenerTest extends AbstractJmsTest {
           "messaging.client.operation.duration",
           metricAttributes("send", true),
           metricAttributes("receive", true));
-      assertNoMetric(
-          testing, "io.opentelemetry.spring-jms-2.0", "messaging.client.consumed.messages");
+      if (!processInstrumentationName.equals("io.opentelemetry.jms-1.1")) {
+        assertNoMetric(testing, processInstrumentationName, "messaging.client.consumed.messages");
+      }
     } else {
       assertCounter(
           testing,
-          "io.opentelemetry.spring-jms-2.0",
+          processInstrumentationName,
           "messaging.client.consumed.messages",
           processAttributes);
       assertHistogram(
@@ -245,7 +260,9 @@ class SpringListenerTest extends AbstractJmsTest {
           "io.opentelemetry.jms-1.1",
           "messaging.client.operation.duration",
           metricAttributes("send", true));
-      assertNoMetric(testing, "io.opentelemetry.jms-1.1", "messaging.client.consumed.messages");
+      if (!processInstrumentationName.equals("io.opentelemetry.jms-1.1")) {
+        assertNoMetric(testing, "io.opentelemetry.jms-1.1", "messaging.client.consumed.messages");
+      }
     }
     assertNoDeprecatedMetrics(testing);
   }

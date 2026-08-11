@@ -13,8 +13,9 @@ import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import javax.jms.ConnectionFactory;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.jms.core.JmsTemplate;
 
@@ -26,10 +27,10 @@ class SpringListenerSuppressReceiveSpansTest extends AbstractJmsTest {
   @RegisterExtension
   private static final AutoCleanupExtension cleanup = AutoCleanupExtension.create();
 
-  @Test
-  void receivingMessageInSpringListenerGeneratesSpans() {
-    AnnotationConfigApplicationContext context =
-        new AnnotationConfigApplicationContext(AnnotatedListenerConfig.class);
+  @ParameterizedTest
+  @ValueSource(classes = {AnnotatedListenerConfig.class, PlainListenerConfig.class})
+  void receivingMessageInSpringListenerGeneratesSpans(Class<? extends AbstractConfig> config) {
+    AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(config);
     cleanup.deferCleanup(context);
     ConnectionFactory factory = context.getBean(ConnectionFactory.class);
     JmsTemplate template = new JmsTemplate(factory);
@@ -49,7 +50,12 @@ class SpringListenerSuppressReceiveSpansTest extends AbstractJmsTest {
                           "process",
                           false,
                           null)));
-      assertMetrics(testing, false);
+      assertMetrics(
+          testing,
+          false,
+          config == PlainListenerConfig.class
+              ? "io.opentelemetry.jms-1.1"
+              : "io.opentelemetry.spring-jms-2.0");
       return;
     }
     testing.waitAndAssertTraces(
@@ -65,6 +71,11 @@ class SpringListenerSuppressReceiveSpansTest extends AbstractJmsTest {
                         "process",
                         false,
                         null)));
-    assertMetrics(testing, false);
+    assertMetrics(
+        testing,
+        false,
+        config == PlainListenerConfig.class
+            ? "io.opentelemetry.jms-1.1"
+            : "io.opentelemetry.spring-jms-2.0");
   }
 }

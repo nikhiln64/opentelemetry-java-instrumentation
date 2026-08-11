@@ -17,6 +17,8 @@ public class JmsSingletons {
   private static final Instrumenter<MessageWithDestination, Void> producerInstrumenter;
   private static final Instrumenter<MessageWithDestination, Void> consumerReceiveInstrumenter;
   private static final Instrumenter<MessageWithDestination, Void> consumerProcessInstrumenter;
+  private static final Instrumenter<MessageWithDestination, Void>
+      consumerProcessAfterReceiveInstrumenter;
 
   static {
     JmsInstrumenterFactory factory =
@@ -30,7 +32,9 @@ public class JmsSingletons {
 
     producerInstrumenter = factory.createProducerInstrumenter();
     consumerReceiveInstrumenter = factory.createConsumerReceiveInstrumenter();
-    consumerProcessInstrumenter = factory.createConsumerProcessInstrumenter(false);
+    consumerProcessInstrumenter = factory.createConsumerProcessInstrumenter(false, true);
+    consumerProcessAfterReceiveInstrumenter =
+        factory.createConsumerProcessInstrumenter(true, false);
   }
 
   public static Instrumenter<MessageWithDestination, Void> producerInstrumenter() {
@@ -43,6 +47,11 @@ public class JmsSingletons {
 
   public static Instrumenter<MessageWithDestination, Void> consumerProcessInstrumenter() {
     return consumerProcessInstrumenter;
+  }
+
+  public static Instrumenter<MessageWithDestination, Void>
+      consumerProcessAfterReceiveInstrumenter() {
+    return consumerProcessAfterReceiveInstrumenter;
   }
 
   private JmsSingletons() {}

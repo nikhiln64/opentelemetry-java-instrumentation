@@ -7,6 +7,7 @@ package io.opentelemetry.javaagent.instrumentation.jms.v3_0;
 
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
+import static io.opentelemetry.javaagent.instrumentation.jms.v3_0.JmsSingletons.consumerProcessAfterReceiveInstrumenter;
 import static io.opentelemetry.javaagent.instrumentation.jms.v3_0.JmsSingletons.consumerProcessInstrumenter;
 import static net.bytebuddy.matcher.ElementMatchers.isPublic;
 import static net.bytebuddy.matcher.ElementMatchers.named;
@@ -14,6 +15,8 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
 
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
+import io.opentelemetry.javaagent.bootstrap.jms.JmsReceiveContextHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.opentelemetry.javaagent.instrumentation.jms.common.v1_1.MessageWithDestination;
@@ -47,34 +50,47 @@ class JmsMessageListenerInstrumentation implements TypeInstrumentation {
 
     public static class AdviceScope {
       private final MessageWithDestination messageWithDestination;
+      private final Instrumenter<MessageWithDestination, Void> instrumenter;
       private final Context context;
       private final Scope scope;
 
       private AdviceScope(
-          MessageWithDestination messageWithDestination, Context context, Scope scope) {
+          MessageWithDestination messageWithDestination,
+          Instrumenter<MessageWithDestination, Void> instrumenter,
+          Context context,
+          Scope scope) {
         this.scope = scope;
         this.context = context;
+        this.instrumenter = instrumenter;
         this.messageWithDestination = messageWithDestination;
       }
 
       @Nullable
       public static AdviceScope start(Message message) {
-        Context parentContext = Context.current();
+        Context currentContext = Context.current();
+        Context receiveContext = JmsReceiveContextHolder.getReceiveContext(currentContext);
+        Context parentContext = receiveContext != null ? receiveContext : currentContext;
         MessageWithDestination messageWithDestination =
             MessageWithDestination.create(JakartaMessageAdapter.create(message), null);
+        Instrumenter<MessageWithDestination, Void> instrumenter =
+            receiveContext == null
+                ? consumerProcessInstrumenter()
+                : consumerProcessAfterReceiveInstrumenter();
 
-        if (!consumerProcessInstrumenter().shouldStart(parentContext, messageWithDestination)) {
-          return null;
+        Context context;
+        try (Scope ignored = Context.root().makeCurrent()) {
+          if (!instrumenter.shouldStart(currentContext, messageWithDestination)) {
+            return null;
+          }
+          context = instrumenter.start(parentContext, messageWithDestination);
         }
-
-        Context context =
-            consumerProcessInstrumenter().start(parentContext, messageWithDestination);
-        return new AdviceScope(messageWithDestination, context, context.makeCurrent());
+        return new AdviceScope(
+            messageWithDestination, instrumenter, context, context.makeCurrent());
       }
 
       public void end(@Nullable Throwable throwable) {
         scope.close();
-        consumerProcessInstrumenter().end(context, messageWithDestination, null, throwable);
+        instrumenter.end(context, messageWithDestination, null, throwable);
       }
     }
 

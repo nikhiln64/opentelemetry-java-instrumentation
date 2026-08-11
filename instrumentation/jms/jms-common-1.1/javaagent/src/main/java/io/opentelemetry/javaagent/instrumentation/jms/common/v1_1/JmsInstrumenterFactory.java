@@ -103,6 +103,12 @@ public class JmsInstrumenterFactory {
 
   public Instrumenter<MessageWithDestination, Void> createConsumerProcessInstrumenter(
       boolean canHaveReceiveInstrumentation) {
+    return createConsumerProcessInstrumenter(
+        canHaveReceiveInstrumentation, !canHaveReceiveInstrumentation);
+  }
+
+  public Instrumenter<MessageWithDestination, Void> createConsumerProcessInstrumenter(
+      boolean canHaveReceiveInstrumentation, boolean recordConsumedMessages) {
     JmsMessageAttributesGetter getter = new JmsMessageAttributesGetter();
     MessagingOperationType operationType = MessagingOperationType.PROCESS;
 
@@ -114,7 +120,7 @@ public class JmsInstrumenterFactory {
             .addAttributesExtractor(
                 createMessagingAttributesExtractor(operationType, PROCESS_OPERATION_NAME))
             .addOperationMetrics(MessagingProcessMetrics.get());
-    if (emitStableMessagingSemconv() && !canHaveReceiveInstrumentation) {
+    if (emitStableMessagingSemconv() && recordConsumedMessages) {
       builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
     }
     setMessagingProcessExceptionEventExtractor(builder);
