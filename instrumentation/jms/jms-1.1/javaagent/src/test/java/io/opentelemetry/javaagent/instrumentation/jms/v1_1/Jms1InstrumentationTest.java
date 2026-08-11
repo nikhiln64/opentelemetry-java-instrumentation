@@ -160,7 +160,7 @@ class Jms1InstrumentationTest extends AbstractJms1Test {
   }
 
   @Test
-  void failedReceiveWithoutRequestDoesNotRecordMetrics() throws JMSException {
+  void failedReceiveRecordsAttempt() throws JMSException {
     assumeTrue(emitStableMessagingSemconv());
     MessageConsumer consumer = session.createConsumer(session.createQueue("failedReceive"));
     consumer.close();
@@ -168,7 +168,11 @@ class Jms1InstrumentationTest extends AbstractJms1Test {
     Throwable failure = catchThrowable(consumer::receiveNoWait);
 
     assertThat(failure).isInstanceOf(JMSException.class);
-    assertNoMetric(testing, "io.opentelemetry.jms-1.1", "messaging.client.operation.duration");
+    assertHistogram(
+        testing,
+        "io.opentelemetry.jms-1.1",
+        "messaging.client.operation.duration",
+        failureMetricAttributes("receive", failure, true));
     assertNoMetric(testing, "io.opentelemetry.jms-1.1", "messaging.client.consumed.messages");
     assertNoDeprecatedMetrics(testing);
   }
@@ -180,6 +184,19 @@ class Jms1InstrumentationTest extends AbstractJms1Test {
             .put(MESSAGING_OPERATION_NAME, operation)
             .put(MESSAGING_SYSTEM, "jms")
             .put(MESSAGING_DESTINATION_NAME, destination)
+            .put(ERROR_TYPE, failure.getClass().getName());
+    if (includeOperationType) {
+      builder.put(MESSAGING_OPERATION_TYPE, operation);
+    }
+    return builder.build();
+  }
+
+  private static Attributes failureMetricAttributes(
+      String operation, Throwable failure, boolean includeOperationType) {
+    AttributesBuilder builder =
+        Attributes.builder()
+            .put(MESSAGING_OPERATION_NAME, operation)
+            .put(MESSAGING_SYSTEM, "jms")
             .put(ERROR_TYPE, failure.getClass().getName());
     if (includeOperationType) {
       builder.put(MESSAGING_OPERATION_TYPE, operation);
