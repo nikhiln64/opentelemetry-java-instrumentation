@@ -5,9 +5,21 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0;
 
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertCounter;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertHistogram;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoDeprecatedMetrics;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoMetric;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoStableMetrics;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_SYSTEM;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
@@ -79,6 +91,65 @@ abstract class AbstractSpringJmsListenerTest {
   }
 
   abstract void assertSpringJmsListener();
+
+  static void assertMetrics(boolean receiveTelemetryEnabled) {
+    if (!emitStableMessagingSemconv()) {
+      assertNoStableMetrics(testing);
+      assertNoDeprecatedMetrics(testing);
+      return;
+    }
+
+    Attributes sendAttributes = metricAttributes("send", false);
+    Attributes receiveAttributes = metricAttributes("receive", false);
+    Attributes processAttributes = metricAttributes("process", false);
+    assertCounter(
+        testing, "io.opentelemetry.jms-3.0", "messaging.client.sent.messages", sendAttributes);
+    assertHistogram(
+        testing,
+        "io.opentelemetry.spring-jms-6.0",
+        "messaging.process.duration",
+        processAttributes);
+    if (receiveTelemetryEnabled) {
+      assertCounter(
+          testing,
+          "io.opentelemetry.jms-3.0",
+          "messaging.client.consumed.messages",
+          receiveAttributes);
+      assertHistogram(
+          testing,
+          "io.opentelemetry.jms-3.0",
+          "messaging.client.operation.duration",
+          metricAttributes("send", true),
+          metricAttributes("receive", true));
+      assertNoMetric(
+          testing, "io.opentelemetry.spring-jms-6.0", "messaging.client.consumed.messages");
+    } else {
+      assertCounter(
+          testing,
+          "io.opentelemetry.spring-jms-6.0",
+          "messaging.client.consumed.messages",
+          processAttributes);
+      assertHistogram(
+          testing,
+          "io.opentelemetry.jms-3.0",
+          "messaging.client.operation.duration",
+          metricAttributes("send", true));
+      assertNoMetric(testing, "io.opentelemetry.jms-3.0", "messaging.client.consumed.messages");
+    }
+    assertNoDeprecatedMetrics(testing);
+  }
+
+  private static Attributes metricAttributes(String operation, boolean includeOperationType) {
+    AttributesBuilder builder =
+        Attributes.builder()
+            .put(MESSAGING_OPERATION_NAME, operation)
+            .put(MESSAGING_SYSTEM, "jms")
+            .put(MESSAGING_DESTINATION_NAME, "spring-jms-listener");
+    if (includeOperationType) {
+      builder.put(MESSAGING_OPERATION_TYPE, operation);
+    }
+    return builder.build();
+  }
 
   static Map<String, Object> defaultConfig() {
     Map<String, Object> props = new HashMap<>();

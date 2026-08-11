@@ -11,8 +11,13 @@ import static io.opentelemetry.api.trace.SpanKind.CONSUMER;
 import static io.opentelemetry.api.trace.SpanKind.PRODUCER;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitOldMessagingSemconv;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertCounter;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertHistogram;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoDeprecatedMetrics;
+import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoStableMetrics;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_DESTINATION_TEMPORARY;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_MESSAGE_ID;
@@ -25,6 +30,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
@@ -170,6 +177,7 @@ abstract class AbstractJms3Test {
                             operationType("process"),
                             equalTo(MESSAGING_MESSAGE_ID, messageId)),
                 span -> span.hasName("consumer").hasParent(trace.getSpan(2))));
+    assertProducerAndProcessMetrics(producerDestinationName, actualDestinationName, isTemporary);
   }
 
   @ParameterizedTest
@@ -189,6 +197,13 @@ abstract class AbstractJms3Test {
     // then
     assertThat(message).isNull();
 
+    if (!receiveTelemetryEnabled()) {
+      assertThat(testing.spans()).isEmpty();
+      assertNoStableMetrics(testing);
+      assertNoDeprecatedMetrics(testing);
+      return;
+    }
+
     testing.waitAndAssertTraces(
         trace ->
             trace.hasSpansSatisfyingExactly(
@@ -199,9 +214,11 @@ abstract class AbstractJms3Test {
                         .hasTotalRecordedLinks(0)
                         .hasAttributesSatisfyingExactly(
                             equalTo(MESSAGING_SYSTEM, "jms"),
+                            emptyBatchMessageCount(),
                             oldOperation("receive"),
                             operationName("receive"),
                             operationType("receive"))));
+    assertReceiveMetrics(null);
   }
 
   @ParameterizedTest
@@ -309,12 +326,128 @@ abstract class AbstractJms3Test {
     return equalTo(MESSAGING_OPERATION, emitOldMessagingSemconv() ? operation : null);
   }
 
+  private static AttributeAssertion emptyBatchMessageCount() {
+    return satisfies(
+        MESSAGING_BATCH_MESSAGE_COUNT,
+        value -> {
+          if (emitStableMessagingSemconv()) {
+            value.isZero();
+          } else {
+            value.isNull();
+          }
+        });
+  }
+
   static AttributeAssertion operationName(String operation) {
     return equalTo(MESSAGING_OPERATION_NAME, emitStableMessagingSemconv() ? operation : null);
   }
 
   static AttributeAssertion operationType(String operation) {
     return equalTo(MESSAGING_OPERATION_TYPE, emitStableMessagingSemconv() ? operation : null);
+  }
+
+  static void assertProducerAndReceiveMetrics(
+      String producerDestinationName, String consumerDestinationName, boolean isTemporary) {
+    if (!emitStableMessagingSemconv()) {
+      assertNoStableMetrics(testing);
+      assertNoDeprecatedMetrics(testing);
+      return;
+    }
+    assertCounter(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.sent.messages",
+        metricAttributes("send", producerDestinationName, isTemporary, false));
+    assertCounter(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.consumed.messages",
+        metricAttributes("receive", consumerDestinationName, false, false));
+    assertHistogram(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.operation.duration",
+        metricAttributes("send", producerDestinationName, isTemporary, true),
+        metricAttributes("receive", consumerDestinationName, false, true));
+    assertNoDeprecatedMetrics(testing);
+  }
+
+  static void assertProducerMetrics(String producerDestinationName, boolean isTemporary) {
+    if (!emitStableMessagingSemconv()) {
+      assertNoStableMetrics(testing);
+      assertNoDeprecatedMetrics(testing);
+      return;
+    }
+    assertCounter(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.sent.messages",
+        metricAttributes("send", producerDestinationName, isTemporary, false));
+    assertHistogram(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.operation.duration",
+        metricAttributes("send", producerDestinationName, isTemporary, true));
+    assertNoDeprecatedMetrics(testing);
+  }
+
+  private static void assertProducerAndProcessMetrics(
+      String producerDestinationName, String consumerDestinationName, boolean isTemporary) {
+    if (!emitStableMessagingSemconv()) {
+      assertNoStableMetrics(testing);
+      assertNoDeprecatedMetrics(testing);
+      return;
+    }
+    assertCounter(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.sent.messages",
+        metricAttributes("send", producerDestinationName, isTemporary, false));
+    assertCounter(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.consumed.messages",
+        metricAttributes("process", consumerDestinationName, false, false));
+    assertHistogram(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.operation.duration",
+        metricAttributes("send", producerDestinationName, isTemporary, true));
+    assertHistogram(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.process.duration",
+        metricAttributes("process", consumerDestinationName, false, false));
+    assertNoDeprecatedMetrics(testing);
+  }
+
+  private static void assertReceiveMetrics(String destinationName) {
+    if (!emitStableMessagingSemconv()) {
+      assertNoStableMetrics(testing);
+      assertNoDeprecatedMetrics(testing);
+      return;
+    }
+    assertHistogram(
+        testing,
+        "io.opentelemetry.jms-3.0",
+        "messaging.client.operation.duration",
+        metricAttributes("receive", destinationName, false, true));
+    assertThat(testing.metrics())
+        .noneMatch(metric -> metric.getName().equals("messaging.client.consumed.messages"));
+    assertNoDeprecatedMetrics(testing);
+  }
+
+  private static Attributes metricAttributes(
+      String operation, String destinationName, boolean isTemporary, boolean includeOperationType) {
+    AttributesBuilder builder =
+        Attributes.builder().put(MESSAGING_OPERATION_NAME, operation).put(MESSAGING_SYSTEM, "jms");
+    if (destinationName != null && !isTemporary) {
+      builder.put(MESSAGING_DESTINATION_NAME, destinationName);
+    }
+    if (includeOperationType) {
+      builder.put(MESSAGING_OPERATION_TYPE, operation);
+    }
+    return builder.build();
   }
 
   private static Stream<Arguments> emptyReceiveArguments() {
@@ -328,6 +461,10 @@ abstract class AbstractJms3Test {
         arguments(queue, receive),
         arguments(topic, receiveNoWait),
         arguments(queue, receiveNoWait));
+  }
+
+  boolean receiveTelemetryEnabled() {
+    return true;
   }
 
   private static Stream<Arguments> destinationArguments() {

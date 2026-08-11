@@ -58,9 +58,29 @@ tasks {
     filter {
       excludeTestsMatching("SpringListenerSuppressReceiveSpansTest")
     }
+    jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
     jvmArgs("-Dotel.semconv-stability.preview=messaging")
-    systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
+    systemProperty(
+      "metadataConfig",
+      "otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true,otel.semconv-stability.preview=messaging",
+    )
   }
+
+  val testMessagingPreviewReceiveSpansDisabled =
+    register<Test>("testMessagingPreviewReceiveSpansDisabled") {
+      testClassesDirs = sourceSets.test.get().output.classesDirs
+      classpath = sourceSets.test.get().runtimeClasspath
+      filter {
+        includeTestsMatching("SpringListenerSuppressReceiveSpansTest")
+      }
+      include("**/SpringListenerSuppressReceiveSpansTest.*")
+      jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=false")
+      jvmArgs("-Dotel.semconv-stability.preview=messaging")
+      systemProperty(
+        "metadataConfig",
+        "otel.instrumentation.messaging.experimental.receive-telemetry.enabled=false,otel.semconv-stability.preview=messaging",
+      )
+    }
 
   val testBothSemconv = register<Test>("testBothSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
@@ -111,6 +131,7 @@ tasks {
     dependsOn(
       testReceiveSpansDisabled,
       testMessagingPreview,
+      testMessagingPreviewReceiveSpansDisabled,
       testBothSemconv,
       testV3Preview,
       testV3PreviewReceiveSpansDisabled,

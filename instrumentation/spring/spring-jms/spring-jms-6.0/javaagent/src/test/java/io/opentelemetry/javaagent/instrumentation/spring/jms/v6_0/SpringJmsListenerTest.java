@@ -266,6 +266,7 @@ class SpringJmsListenerTest extends AbstractSpringJmsListenerTest {
                             operationType("process"),
                             satisfies(MESSAGING_MESSAGE_ID, AbstractStringAssert::isNotBlank)),
                 span -> span.hasName("consumer").hasParent(trace.getSpan(1))));
+    assertMetrics(true);
   }
 
   @ParameterizedTest

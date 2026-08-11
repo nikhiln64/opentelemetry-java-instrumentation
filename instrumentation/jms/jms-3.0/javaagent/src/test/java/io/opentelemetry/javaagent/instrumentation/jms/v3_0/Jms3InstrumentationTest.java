@@ -102,5 +102,6 @@ class Jms3InstrumentationTest extends AbstractJms3Test {
                             operationName("receive"),
                             operationType("receive"),
                             equalTo(MESSAGING_MESSAGE_ID, messageId))));
+    assertProducerAndReceiveMetrics(producerDestinationName, actualDestinationName, isTemporary);
   }
 }

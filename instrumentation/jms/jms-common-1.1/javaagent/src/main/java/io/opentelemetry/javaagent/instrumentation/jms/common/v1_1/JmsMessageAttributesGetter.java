@@ -97,7 +97,7 @@ final class JmsMessageAttributesGetter
   @Override
   public Long getBatchMessageCount(
       MessageWithDestination messageWithDestination, @Nullable Void unused) {
-    return null;
+    return messageWithDestination.message() == null ? 0L : null;
   }
 
   @Override

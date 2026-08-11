@@ -76,11 +76,13 @@ class SpringJmsMessageListenerInstrumentation implements TypeInstrumentation {
         MessageWithDestination request =
             MessageWithDestination.create(JakartaMessageAdapter.create(message), null);
 
-        if (!listenerInstrumenter().shouldStart(parentContext, request)) {
-          return null;
+        Context context;
+        try (Scope ignored = parentContext.makeCurrent()) {
+          if (!listenerInstrumenter().shouldStart(parentContext, request)) {
+            return null;
+          }
+          context = listenerInstrumenter().start(parentContext, request);
         }
-
-        Context context = listenerInstrumenter().start(parentContext, request);
         return new AdviceScope(request, context, context.makeCurrent());
       }
 

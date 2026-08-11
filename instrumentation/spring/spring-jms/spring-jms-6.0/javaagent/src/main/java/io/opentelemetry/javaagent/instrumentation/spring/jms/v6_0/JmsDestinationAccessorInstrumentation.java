@@ -5,16 +5,19 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0;
 
+import static io.opentelemetry.api.trace.SpanKind.CLIENT;
+import static io.opentelemetry.api.trace.SpanKind.CONSUMER;
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0.SpringJmsSingletons.RECEIVE_TELEMETRY_ENABLED;
 import static io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0.SpringJmsSingletons.receiveInstrumenter;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
 
-import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.api.internal.InstrumenterUtil;
 import io.opentelemetry.javaagent.bootstrap.Java8BytecodeBridge;
+import io.opentelemetry.javaagent.bootstrap.jms.JmsReceiveContextHolder;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import javax.annotation.Nullable;
@@ -41,13 +44,16 @@ class JmsDestinationAccessorInstrumentation implements TypeInstrumentation {
     @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     @Nullable
     public static Scope onEnter() {
-      if (RECEIVE_TELEMETRY_ENABLED) {
+      Context currentContext = Java8BytecodeBridge.currentContext();
+      if (RECEIVE_TELEMETRY_ENABLED || !JmsReceiveContextHolder.isInitialized(currentContext)) {
         return null;
       }
       // suppress receive span creation in jms instrumentation
       Context context =
           InstrumenterUtil.suppressSpan(
-              receiveInstrumenter(), Java8BytecodeBridge.currentContext(), SpanKind.CONSUMER);
+              receiveInstrumenter(),
+              currentContext,
+              emitStableMessagingSemconv() ? CLIENT : CONSUMER);
       return context.makeCurrent();
     }
 

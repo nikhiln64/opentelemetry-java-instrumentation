@@ -14,7 +14,10 @@ import static java.util.Collections.emptyList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingAttributesExtractor;
+import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingConsumerMetrics;
 import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingOperationType;
+import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingProcessMetrics;
+import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingProducerMetrics;
 import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingSpanKindExtractor;
 import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.MessagingSpanNameExtractor;
 import io.opentelemetry.instrumentation.api.incubator.semconv.messaging.internal.MessagingProcessInstrumenterFactory;
@@ -67,7 +70,8 @@ public class JmsInstrumenterFactory {
                 instrumentationName,
                 MessagingSpanNameExtractor.create(getter, operationType, SEND_OPERATION_NAME))
             .addAttributesExtractor(
-                createMessagingAttributesExtractor(operationType, SEND_OPERATION_NAME));
+                createMessagingAttributesExtractor(operationType, SEND_OPERATION_NAME))
+            .addOperationMetrics(MessagingProducerMetrics.getForOperationType());
     setMessagingSendExceptionEventExtractor(builder);
     return builder.buildProducerInstrumenter(new MessagePropertySetter());
   }
@@ -82,7 +86,8 @@ public class JmsInstrumenterFactory {
                 instrumentationName,
                 MessagingSpanNameExtractor.create(getter, operationType, RECEIVE_OPERATION_NAME))
             .addAttributesExtractor(
-                createMessagingAttributesExtractor(operationType, RECEIVE_OPERATION_NAME));
+                createMessagingAttributesExtractor(operationType, RECEIVE_OPERATION_NAME))
+            .addOperationMetrics(MessagingConsumerMetrics.getForOperationType());
     setMessagingReceiveExceptionEventExtractor(builder);
     // with the stable messaging semantic conventions the producer is always linked, since it is
     // never used as the parent of the receive span
@@ -107,7 +112,11 @@ public class JmsInstrumenterFactory {
                 instrumentationName,
                 MessagingSpanNameExtractor.create(getter, operationType, PROCESS_OPERATION_NAME))
             .addAttributesExtractor(
-                createMessagingAttributesExtractor(operationType, PROCESS_OPERATION_NAME));
+                createMessagingAttributesExtractor(operationType, PROCESS_OPERATION_NAME))
+            .addOperationMetrics(MessagingProcessMetrics.get());
+    if (emitStableMessagingSemconv() && !canHaveReceiveInstrumentation) {
+      builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
+    }
     setMessagingProcessExceptionEventExtractor(builder);
     return MessagingProcessInstrumenterFactory.create(
         builder,

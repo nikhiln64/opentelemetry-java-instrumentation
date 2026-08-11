@@ -100,5 +100,6 @@ class Jms1InstrumentationTest extends AbstractJms1Test {
                             operationType("receive"),
                             equalTo(MESSAGING_MESSAGE_ID, messageId),
                             messagingTempDestination(isTemporary))));
+    assertProducerAndReceiveMetrics(testing, destinationName, isTemporary);
   }
 }
