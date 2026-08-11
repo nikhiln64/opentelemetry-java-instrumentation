@@ -461,7 +461,7 @@ public final class TracingExecutionInterceptor implements ExecutionInterceptor {
     io.opentelemetry.context.Context otelContext = getContext(executionAttributes);
     if (otelContext != null) {
       Timer timer = executionAttributes.getAttribute(REQUEST_TIMER_ATTRIBUTE);
-      if (timer != null && executionAttributes.getAttribute(SDK_HTTP_REQUEST_ATTRIBUTE) != null) {
+      if (timer != null) {
         SqsAccess.afterReceiveMessageExecutionFailure(
             executionAttributes, this, timer, context.exception());
       }
