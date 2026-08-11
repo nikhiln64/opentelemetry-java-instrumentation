@@ -197,7 +197,7 @@ abstract class AbstractJms3Test {
     // then
     assertThat(message).isNull();
 
-    if (!receiveTelemetryEnabled()) {
+    if (!emptyReceiveTelemetryEnabled()) {
       assertThat(testing.spans()).isEmpty();
       assertNoStableMetrics(testing);
       assertNoDeprecatedMetrics(testing);
@@ -463,7 +463,7 @@ abstract class AbstractJms3Test {
         arguments(queue, receiveNoWait));
   }
 
-  boolean receiveTelemetryEnabled() {
+  boolean emptyReceiveTelemetryEnabled() {
     return true;
   }
 

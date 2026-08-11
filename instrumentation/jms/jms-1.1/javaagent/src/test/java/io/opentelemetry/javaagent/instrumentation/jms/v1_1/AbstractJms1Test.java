@@ -180,7 +180,7 @@ abstract class AbstractJms1Test {
     // then
     assertThat(message).isNull();
 
-    if (!receiveTelemetryEnabled()) {
+    if (!emptyReceiveTelemetryEnabled()) {
       assertThat(testing.spans()).isEmpty();
       assertNoStableMetrics(testing);
       assertNoDeprecatedMetrics(testing);
@@ -321,32 +321,6 @@ abstract class AbstractJms1Test {
     // write properties in MessagePropertyTextMap when readOnlyProperties = true.
     // As a result, the consumer span will not be linked to the producer span as we are unable to
     // propagate the trace context as a message property.
-    if (!receiveTelemetryEnabled()) {
-      testing.waitAndAssertTraces(
-          trace ->
-              trace.hasSpansSatisfyingExactly(
-                  span -> span.hasName("producer parent").hasNoParent(),
-                  span ->
-                      span.hasName(
-                              emitStableMessagingSemconv()
-                                  ? destinationName.equals("(temporary)")
-                                      ? "send"
-                                      : "send " + destinationName
-                                  : destinationName + " publish")
-                          .hasKind(PRODUCER)
-                          .hasParent(trace.getSpan(0))
-                          .hasAttributesSatisfyingExactly(
-                              equalTo(MESSAGING_SYSTEM, "jms"),
-                              messagingDestinationName(destinationName, isTemporary),
-                              oldOperation("publish"),
-                              operationName("send"),
-                              operationType("send"),
-                              equalTo(MESSAGING_MESSAGE_ID, messageId),
-                              messagingTempDestination(isTemporary))));
-      assertProducerMetrics(testing, destinationName, isTemporary);
-      return;
-    }
-
     testing.waitAndAssertTraces(
         trace ->
             trace.hasSpansSatisfyingExactly(
@@ -388,6 +362,7 @@ abstract class AbstractJms1Test {
                             operationType("receive"),
                             equalTo(MESSAGING_MESSAGE_ID, messageId),
                             messagingTempDestination(isTemporary))));
+    assertProducerAndReceiveMetrics(testing, destinationName, isTemporary);
   }
 
   static AttributeAssertion messagingTempDestination(boolean isTemporary) {
@@ -545,7 +520,7 @@ abstract class AbstractJms1Test {
         arguments(queue, receiveNoWait));
   }
 
-  boolean receiveTelemetryEnabled() {
+  boolean emptyReceiveTelemetryEnabled() {
     return true;
   }
 
