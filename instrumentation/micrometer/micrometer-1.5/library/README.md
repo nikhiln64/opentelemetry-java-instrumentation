@@ -126,6 +126,14 @@ forwards them to OpenTelemetry. The first unsupported read logs a warning.
 configured with percentiles, a percentile histogram, or service level objectives and the
 [histogram gauges](#histograms-percentiles-and-service-level-objectives) are enabled.
 
+Because of this, the OpenTelemetry registry is meant to be used alongside another registry rather
+than as a replacement. When it is composed with a read-capable registry such as Spring Boot's
+`SimpleMeterRegistry`, code that reads meters back can be served by that registry instead. The
+javaagent's Spring Boot Actuator instrumentation and the Spring Boot starter both do this
+automatically: they keep Spring Boot's fallback registry and order the `CompositeMeterRegistry` so
+that the OpenTelemetry registry comes last, leaving Actuator's metrics endpoint, which reads from
+the first registry holding the meter, served by the other registry.
+
 ### Prometheus mode
 
 Prometheus mode approximates the naming behavior of Micrometer's `PrometheusMeterRegistry`, for
