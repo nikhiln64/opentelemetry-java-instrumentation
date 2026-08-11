@@ -41,6 +41,8 @@ import com.amazonaws.services.sqs.AmazonSQSAsyncClientBuilder;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.ReceiveMessageResult;
+import com.amazonaws.services.sqs.model.SendMessageBatchRequest;
+import com.amazonaws.services.sqs.model.SendMessageBatchRequestEntry;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.test.utils.PortUtils;
@@ -227,6 +229,27 @@ public abstract class AbstractSqsSuppressReceiveSpansTest {
               }
               trace.hasSpansSatisfyingExactly(spanAsserts);
             });
+  }
+
+  @Test
+  void testProcessMetricsRecordConsumedMessagesWhenReceiveDisabled() {
+    String queueUrl = "http://localhost:" + sqsPort + "/000000000000/testSdkSqs";
+    sqsClient.createQueue("testSdkSqs");
+    sqsClient.sendMessageBatch(
+        new SendMessageBatchRequest()
+            .withQueueUrl(queueUrl)
+            .withEntries(
+                new SendMessageBatchRequestEntry("i1", "e1"),
+                new SendMessageBatchRequestEntry("i2", "e2"),
+                new SendMessageBatchRequestEntry("i3", "e3")));
+    testing().clearData();
+
+    ReceiveMessageResult response =
+        sqsClient.receiveMessage(new ReceiveMessageRequest(queueUrl).withMaxNumberOfMessages(10));
+    response.getMessages().forEach(message -> {});
+
+    assertThat(response.getMessages()).hasSize(3);
+    SqsMetricsAssertions.assertProcessFallbackMetrics(testing(), sqsPort, 3);
   }
 
   private static void createQueueSpan(SpanDataAssert span) {

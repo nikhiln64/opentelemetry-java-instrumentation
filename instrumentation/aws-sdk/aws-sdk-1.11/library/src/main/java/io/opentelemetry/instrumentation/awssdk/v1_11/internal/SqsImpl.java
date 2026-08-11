@@ -22,6 +22,7 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.instrumentation.api.internal.InstrumenterUtil;
 import io.opentelemetry.instrumentation.api.internal.Timer;
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.Map;
 import javax.annotation.Nullable;
 
@@ -48,6 +49,33 @@ public final class SqsImpl {
       return true;
     }
     return false;
+  }
+
+  static boolean afterError(
+      Request<?> request,
+      @Nullable Response<?> response,
+      Timer timer,
+      Context parentContext,
+      TracingRequestHandler requestHandler,
+      Throwable error) {
+    if (!(request.getOriginalRequest() instanceof ReceiveMessageRequest)) {
+      return false;
+    }
+    Instrumenter<SqsReceiveRequest, Response<?>> consumerReceiveInstrumenter =
+        requestHandler.getConsumerReceiveInstrumenter();
+    SqsReceiveRequest receiveRequest =
+        SqsReceiveRequest.create(request, Collections.<SqsMessage>emptyList());
+    if (consumerReceiveInstrumenter.shouldStart(parentContext, receiveRequest)) {
+      InstrumenterUtil.startAndEnd(
+          consumerReceiveInstrumenter,
+          parentContext,
+          receiveRequest,
+          response,
+          error,
+          timer.startTime(),
+          timer.now());
+    }
+    return true;
   }
 
   private static void afterConsumerResponse(

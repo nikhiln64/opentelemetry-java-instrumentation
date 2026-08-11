@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +122,34 @@ public final class SqsImpl {
     // store tracing list in context so that our proxied SqsClient/SqsAsyncClient could pick it up
     SqsTracingContext.set(parentContext, tracingList);
 
+    return true;
+  }
+
+  static boolean afterReceiveMessageExecutionFailure(
+      ExecutionAttributes executionAttributes,
+      TracingExecutionInterceptor config,
+      Timer timer,
+      Throwable error) {
+    SdkRequest request = executionAttributes.getAttribute(SDK_REQUEST_ATTRIBUTE);
+    if (!(request instanceof ReceiveMessageRequest)) {
+      return false;
+    }
+    io.opentelemetry.context.Context parentContext =
+        TracingExecutionInterceptor.getParentContext(executionAttributes);
+    Instrumenter<SqsReceiveRequest, Response> consumerReceiveInstrumenter =
+        config.getConsumerReceiveInstrumenter();
+    SqsReceiveRequest receiveRequest =
+        SqsReceiveRequest.create(executionAttributes, Collections.<SqsMessage>emptyList());
+    if (consumerReceiveInstrumenter.shouldStart(parentContext, receiveRequest)) {
+      InstrumenterUtil.startAndEnd(
+          consumerReceiveInstrumenter,
+          parentContext,
+          receiveRequest,
+          null,
+          error,
+          timer.startTime(),
+          timer.now());
+    }
     return true;
   }
 

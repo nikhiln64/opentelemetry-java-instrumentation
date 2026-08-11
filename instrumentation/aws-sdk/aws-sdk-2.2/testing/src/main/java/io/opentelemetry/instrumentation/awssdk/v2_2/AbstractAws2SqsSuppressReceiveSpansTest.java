@@ -248,4 +248,22 @@ public abstract class AbstractAws2SqsSuppressReceiveSpansTest extends AbstractAw
     }
     getTesting().waitAndAssertTraces(traceAsserts);
   }
+
+  @Test
+  void testProcessMetricsRecordConsumedMessagesWhenReceiveDisabled() {
+    SqsClientBuilder builder = SqsClient.builder();
+    configureSdkClient(builder);
+    SqsClient client = configureSqsClient(builder.build());
+    client.createQueue(createQueueRequest);
+    client.sendMessageBatch(sendMessageBatchRequest);
+    getTesting().clearData();
+
+    ReceiveMessageResponse response =
+        client.receiveMessage(
+            receiveMessageBatchRequest.toBuilder().maxNumberOfMessages(10).build());
+    response.messages().forEach(message -> {});
+
+    assertThat(response.messages()).hasSize(3);
+    SqsMetricsAssertions.assertProcessFallbackMetrics(getTesting(), sqsPort, 3);
+  }
 }
