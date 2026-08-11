@@ -85,6 +85,7 @@ public final class MessagingMetricsAssertions {
 
   private static void verifyHistogram(MetricData metric, Attributes... attributes) {
     assertThat(metric.getHistogramData().getPoints())
+        .allSatisfy(point -> assertThat(point.getCount()).isEqualTo(1))
         .extracting(point -> point.getAttributes())
         .containsExactlyInAnyOrder(attributes);
   }

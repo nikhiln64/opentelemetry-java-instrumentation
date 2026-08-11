@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.jms.common.v1_1;
 
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.logging.Level.FINE;
@@ -97,7 +98,7 @@ final class JmsMessageAttributesGetter
   @Override
   public Long getBatchMessageCount(
       MessageWithDestination messageWithDestination, @Nullable Void unused) {
-    return messageWithDestination.message() == null ? 0L : null;
+    return emitStableMessagingSemconv() && messageWithDestination.message() == null ? 0L : null;
   }
 
   @Override

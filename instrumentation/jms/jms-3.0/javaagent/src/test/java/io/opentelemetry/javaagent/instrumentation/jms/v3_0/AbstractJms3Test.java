@@ -329,11 +329,11 @@ abstract class AbstractJms3Test {
   private static AttributeAssertion emptyBatchMessageCount() {
     return satisfies(
         MESSAGING_BATCH_MESSAGE_COUNT,
-        value -> {
+        val -> {
           if (emitStableMessagingSemconv()) {
-            value.isZero();
+            val.isZero();
           } else {
-            value.isNull();
+            val.isNull();
           }
         });
   }
