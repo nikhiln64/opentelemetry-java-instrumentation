@@ -5,8 +5,6 @@
 
 package io.opentelemetry.javaagent.instrumentation.rocketmqclient.v5_0;
 
-import static io.opentelemetry.javaagent.instrumentation.rocketmqclient.v5_0.RocketMqSingletons.consumerProcessInstrumenter;
-
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
@@ -35,7 +33,7 @@ public class MessageListenerWrapper implements MessageListener {
       parentContext = Context.current();
     }
     Instrumenter<MessageView, ConsumeResult> processInstrumenter =
-        consumerProcessInstrumenter(messageView);
+        RocketMqSingletons.consumerProcessInstrumenter(messageView);
     if (!processInstrumenter.shouldStart(parentContext, messageView)) {
       return delegator.consume(messageView);
     }
