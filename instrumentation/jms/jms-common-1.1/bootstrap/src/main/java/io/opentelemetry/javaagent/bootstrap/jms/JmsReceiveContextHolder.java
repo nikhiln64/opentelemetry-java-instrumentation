@@ -17,6 +17,7 @@ public final class JmsReceiveContextHolder implements ImplicitContextKeyed {
       named("opentelemetry-jms-receive-context");
 
   @Nullable private Context receiveContext;
+  private boolean receiveTelemetryRecorded;
 
   private JmsReceiveContextHolder() {}
 
@@ -32,13 +33,19 @@ public final class JmsReceiveContextHolder implements ImplicitContextKeyed {
   }
 
   public static void set(Context receiveContext) {
-    set(receiveContext, receiveContext);
+    set(receiveContext, receiveContext, true);
   }
 
   public static void set(Context holderContext, Context receiveContext) {
+    set(holderContext, receiveContext, false);
+  }
+
+  private static void set(
+      Context holderContext, Context receiveContext, boolean receiveTelemetryRecorded) {
     JmsReceiveContextHolder holder = holderContext.get(KEY);
     if (holder != null) {
       holder.receiveContext = receiveContext;
+      holder.receiveTelemetryRecorded = receiveTelemetryRecorded;
     }
   }
 
@@ -46,6 +53,11 @@ public final class JmsReceiveContextHolder implements ImplicitContextKeyed {
   public static Context getReceiveContext(Context context) {
     JmsReceiveContextHolder holder = context.get(KEY);
     return holder != null ? holder.receiveContext : null;
+  }
+
+  public static boolean isReceiveTelemetryRecorded(Context context) {
+    JmsReceiveContextHolder holder = context.get(KEY);
+    return holder != null && holder.receiveTelemetryRecorded;
   }
 
   @Override

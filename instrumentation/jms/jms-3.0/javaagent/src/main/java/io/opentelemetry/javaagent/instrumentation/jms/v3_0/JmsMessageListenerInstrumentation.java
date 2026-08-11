@@ -73,9 +73,9 @@ class JmsMessageListenerInstrumentation implements TypeInstrumentation {
         MessageWithDestination messageWithDestination =
             MessageWithDestination.create(JakartaMessageAdapter.create(message), null);
         Instrumenter<MessageWithDestination, Void> instrumenter =
-            receiveContext == null
-                ? consumerProcessInstrumenter()
-                : consumerProcessAfterReceiveInstrumenter();
+            JmsReceiveContextHolder.isReceiveTelemetryRecorded(currentContext)
+                ? consumerProcessAfterReceiveInstrumenter()
+                : consumerProcessInstrumenter();
 
         Context context;
         try (Scope ignored = Context.root().makeCurrent()) {
