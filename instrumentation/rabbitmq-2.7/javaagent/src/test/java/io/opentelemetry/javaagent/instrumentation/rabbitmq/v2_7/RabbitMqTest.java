@@ -131,11 +131,14 @@ class RabbitMqTest extends AbstractRabbitMqTest {
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span ->
-                    span.hasName(emitStableMessagingSemconv() ? "receive" : "<generated> receive")
+                    span.hasName(
+                            emitStableMessagingSemconv()
+                                ? "receive " + queueName
+                                : queueName + " receive")
                         .hasKind(emitStableMessagingSemconv() ? SpanKind.CLIENT : SpanKind.CONSUMER)
                         .hasNoParent()
                         .hasTotalRecordedLinks(0)));
-    assertReceiveMetrics(testing, null, null, 0);
+    assertReceiveMetrics(testing, queueName, null, 0);
   }
 
   @Test
