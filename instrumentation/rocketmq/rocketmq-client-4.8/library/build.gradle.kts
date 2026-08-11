@@ -38,7 +38,22 @@ tasks {
     jvmArgs("-Dotel.semconv-stability.preview=messaging/dup")
   }
 
+  val testV3Preview = register<Test>("testV3Preview") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    jvmArgs("-Dotel.instrumentation.common.v3-preview=true")
+  }
+
+  val testV3PreviewDisabled = register<Test>("testV3PreviewDisabled") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+      includeTestsMatching("RocketMqMetricsTest")
+    }
+    jvmArgs("-Dotel.instrumentation.common.v3-preview=false")
+  }
+
   check {
-    dependsOn(testMessagingPreview, testBothSemconv)
+    dependsOn(testMessagingPreview, testBothSemconv, testV3Preview, testV3PreviewDisabled)
   }
 }

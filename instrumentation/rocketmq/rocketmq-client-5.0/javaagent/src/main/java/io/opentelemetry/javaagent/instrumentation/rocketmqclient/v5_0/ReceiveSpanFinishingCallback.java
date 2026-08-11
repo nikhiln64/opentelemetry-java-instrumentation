@@ -64,6 +64,9 @@ public class ReceiveSpanFinishingCallback implements FutureCallback<ReceiveMessa
               null,
               timer.startTime(),
               timer.now());
+      for (MessageView messageView : messageViews) {
+        VirtualFieldStore.markReceiveTelemetryRecorded(messageView);
+      }
       if (!emitStableMessagingSemconv()) {
         for (MessageView messageView : messageViews) {
           VirtualFieldStore.setContextByMessage(messageView, context);

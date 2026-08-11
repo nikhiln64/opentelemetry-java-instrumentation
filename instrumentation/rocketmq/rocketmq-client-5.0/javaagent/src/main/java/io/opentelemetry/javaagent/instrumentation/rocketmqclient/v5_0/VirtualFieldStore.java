@@ -23,6 +23,8 @@ public class VirtualFieldStore {
       VirtualField.find(PublishingMessageImpl.class, String.class);
   private static final VirtualField<MessageView, String> MESSAGE_CONSUMER_GROUP =
       VirtualField.find(MessageView.class, String.class);
+  private static final VirtualField<MessageView, Boolean> MESSAGE_RECEIVE_TELEMETRY_RECORDED =
+      VirtualField.find(MessageView.class, Boolean.class);
 
   private VirtualFieldStore() {}
 
@@ -70,5 +72,13 @@ public class VirtualFieldStore {
 
   public static void setConsumerGroupByMessage(MessageView messageView, String consumerGroup) {
     MESSAGE_CONSUMER_GROUP.set(messageView, consumerGroup);
+  }
+
+  public static boolean isReceiveTelemetryRecorded(MessageView messageView) {
+    return Boolean.TRUE.equals(MESSAGE_RECEIVE_TELEMETRY_RECORDED.get(messageView));
+  }
+
+  public static void markReceiveTelemetryRecorded(MessageView messageView) {
+    MESSAGE_RECEIVE_TELEMETRY_RECORDED.set(messageView, true);
   }
 }

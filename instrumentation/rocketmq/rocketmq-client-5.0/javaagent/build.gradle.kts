@@ -33,6 +33,11 @@ tasks {
       includeTestsMatching("RocketMqClientSuppressReceiveSpanTest")
     }
     include("**/RocketMqClientSuppressReceiveSpanTest.*")
+    jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=false")
+    systemProperty(
+      "metadataConfig",
+      "otel.instrumentation.messaging.experimental.receive-telemetry.enabled=false",
+    )
   }
 
   val testMessagingPreview = register<Test>("testMessagingPreview") {
@@ -57,6 +62,17 @@ tasks {
     systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
   }
 
+  val testMessagingPreviewReceiveDisabled = register<Test>("testMessagingPreviewReceiveDisabled") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+      includeTestsMatching("RocketMqClientSuppressReceiveSpanTest")
+    }
+    jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=false")
+    jvmArgs("-Dotel.semconv-stability.preview=messaging")
+    systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
+  }
+
   val testV3Preview = register<Test>("testV3Preview") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -77,6 +93,16 @@ tasks {
     }
     jvmArgs("-Dotel.instrumentation.common.v3-preview=true")
     systemProperty("metadataConfig", "otel.instrumentation.common.v3-preview=true")
+  }
+
+  val testV3PreviewDisabled = register<Test>("testV3PreviewDisabled") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+      includeTestsMatching("RocketMqClientSuppressReceiveSpanTest")
+    }
+    jvmArgs("-Dotel.instrumentation.common.v3-preview=false")
+    systemProperty("metadataConfig", "otel.instrumentation.common.v3-preview=false")
   }
 
   val testBothSemconv = register<Test>("testBothSemconv") {
@@ -107,8 +133,10 @@ tasks {
       testReceiveSpanDisabled,
       testMessagingPreview,
       testMessagingPreviewDefault,
+      testMessagingPreviewReceiveDisabled,
       testV3Preview,
       testV3PreviewDefault,
+      testV3PreviewDisabled,
       testBothSemconv,
     )
   }

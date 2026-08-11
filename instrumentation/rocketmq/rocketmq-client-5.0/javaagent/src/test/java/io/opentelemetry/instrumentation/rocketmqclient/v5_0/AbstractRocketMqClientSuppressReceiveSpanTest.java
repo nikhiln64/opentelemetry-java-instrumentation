@@ -6,11 +6,15 @@
 package io.opentelemetry.instrumentation.rocketmqclient.v5_0;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_MESSAGE_BODY_SIZE;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_MESSAGE_ID;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION_NAME;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_ROCKETMQ_CLIENT_GROUP;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_ROCKETMQ_MESSAGE_KEYS;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_ROCKETMQ_MESSAGE_TAG;
@@ -20,6 +24,7 @@ import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
@@ -157,5 +162,119 @@ abstract class AbstractRocketMqClientSuppressReceiveSpanTest {
                   span ->
                       span.hasName("child").hasKind(SpanKind.INTERNAL).hasParent(trace.getSpan(2)));
             });
+    if (emitStableMessagingSemconv()) {
+      assertMetrics(topic, consumerGroup);
+    } else {
+      assertNoMessagingMetrics();
+    }
+  }
+
+  private void assertMetrics(String topic, String consumerGroup) {
+    testing()
+        .waitAndAssertMetrics(
+            "io.opentelemetry.rocketmq-client-5.0",
+            "messaging.client.sent.messages",
+            metrics ->
+                metrics.satisfiesExactly(
+                    metric ->
+                        assertThat(metric)
+                            .hasLongSumSatisfying(
+                                sum ->
+                                    sum.hasPointsSatisfying(
+                                        point ->
+                                            point
+                                                .hasValue(1)
+                                                .hasAttributesSatisfyingExactly(
+                                                    equalTo(MESSAGING_OPERATION_NAME, "send"),
+                                                    equalTo(MESSAGING_SYSTEM, "rocketmq"),
+                                                    equalTo(MESSAGING_DESTINATION_NAME, topic))))));
+    testing()
+        .waitAndAssertMetrics(
+            "io.opentelemetry.rocketmq-client-5.0",
+            "messaging.client.operation.duration",
+            metrics ->
+                metrics.satisfiesExactly(
+                    metric ->
+                        assertThat(metric)
+                            .hasHistogramSatisfying(
+                                histogram ->
+                                    histogram.hasPointsSatisfying(
+                                        point ->
+                                            point
+                                                .hasCount(1)
+                                                .hasAttributesSatisfyingExactly(
+                                                    equalTo(MESSAGING_OPERATION_NAME, "send"),
+                                                    equalTo(MESSAGING_SYSTEM, "rocketmq"),
+                                                    equalTo(MESSAGING_DESTINATION_NAME, topic),
+                                                    equalTo(MESSAGING_OPERATION_TYPE, "send"))))));
+    testing()
+        .waitAndAssertMetrics(
+            "io.opentelemetry.rocketmq-client-5.0",
+            "messaging.process.duration",
+            metrics ->
+                metrics.satisfiesExactly(
+                    metric ->
+                        assertThat(metric)
+                            .hasHistogramSatisfying(
+                                histogram ->
+                                    histogram.hasPointsSatisfying(
+                                        point ->
+                                            point
+                                                .hasCount(1)
+                                                .hasAttributesSatisfyingExactly(
+                                                    equalTo(MESSAGING_OPERATION_NAME, "process"),
+                                                    equalTo(MESSAGING_SYSTEM, "rocketmq"),
+                                                    equalTo(
+                                                        MESSAGING_CONSUMER_GROUP_NAME,
+                                                        consumerGroup),
+                                                    equalTo(MESSAGING_DESTINATION_NAME, topic))))));
+    testing()
+        .waitAndAssertMetrics(
+            "io.opentelemetry.rocketmq-client-5.0",
+            "messaging.client.consumed.messages",
+            metrics ->
+                metrics.satisfiesExactly(
+                    metric ->
+                        assertThat(metric)
+                            .hasLongSumSatisfying(
+                                sum ->
+                                    sum.hasPointsSatisfying(
+                                        point ->
+                                            point
+                                                .hasValue(1)
+                                                .hasAttributesSatisfyingExactly(
+                                                    equalTo(MESSAGING_OPERATION_NAME, "process"),
+                                                    equalTo(MESSAGING_SYSTEM, "rocketmq"),
+                                                    equalTo(
+                                                        MESSAGING_CONSUMER_GROUP_NAME,
+                                                        consumerGroup),
+                                                    equalTo(MESSAGING_DESTINATION_NAME, topic))))));
+    assertThat(testing().metrics())
+        .noneMatch(
+            metric ->
+                metric
+                        .getInstrumentationScopeInfo()
+                        .getName()
+                        .equals("io.opentelemetry.rocketmq-client-5.0")
+                    && (metric.getName().equals("messaging.publish.duration")
+                        || metric.getName().equals("messaging.receive.duration")
+                        || metric.getName().equals("messaging.receive.messages")));
+  }
+
+  private void assertNoMessagingMetrics() {
+    assertThat(testing().metrics())
+        .noneMatch(
+            metric ->
+                metric
+                        .getInstrumentationScopeInfo()
+                        .getName()
+                        .equals("io.opentelemetry.rocketmq-client-5.0")
+                    && (metric.getName().equals("messaging.client.operation.duration")
+                        || metric.getName().equals("messaging.client.sent.messages")
+                        || metric.getName().equals("messaging.client.consumed.messages")
+                        || metric.getName().equals("messaging.process.duration")
+                        || metric.getName().equals("messaging.publish.duration")
+                        || metric.getName().equals("messaging.receive.duration")
+                        || metric.getName().equals("messaging.receive.messages")));
   }
 }

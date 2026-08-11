@@ -21,6 +21,8 @@ public class RocketMqSingletons {
   private static final Instrumenter<RocketMqReceiveRequest, List<MessageView>>
       consumerReceiveInstrumenter;
   private static final Instrumenter<MessageView, ConsumeResult> consumerProcessInstrumenter;
+  private static final Instrumenter<MessageView, ConsumeResult>
+      consumerProcessInstrumenterWithConsumedMessages;
   private static final boolean receiveTelemetryExplicitlyEnabled;
 
   static {
@@ -37,7 +39,10 @@ public class RocketMqSingletons {
             openTelemetry, messagingHeaders, receiveInstrumentationEnabled);
     consumerProcessInstrumenter =
         RocketMqInstrumenterFactory.createConsumerProcessInstrumenter(
-            openTelemetry, messagingHeaders, receiveInstrumentationEnabled);
+            openTelemetry, messagingHeaders, receiveInstrumentationEnabled, false);
+    consumerProcessInstrumenterWithConsumedMessages =
+        RocketMqInstrumenterFactory.createConsumerProcessInstrumenter(
+            openTelemetry, messagingHeaders, receiveInstrumentationEnabled, true);
   }
 
   public static Instrumenter<PublishingMessageImpl, SendReceiptImpl> producerInstrumenter() {
@@ -49,8 +54,11 @@ public class RocketMqSingletons {
     return consumerReceiveInstrumenter;
   }
 
-  public static Instrumenter<MessageView, ConsumeResult> consumerProcessInstrumenter() {
-    return consumerProcessInstrumenter;
+  public static Instrumenter<MessageView, ConsumeResult> consumerProcessInstrumenter(
+      MessageView messageView) {
+    return VirtualFieldStore.isReceiveTelemetryRecorded(messageView)
+        ? consumerProcessInstrumenter
+        : consumerProcessInstrumenterWithConsumedMessages;
   }
 
   public static boolean receiveTelemetryExplicitlyEnabled() {

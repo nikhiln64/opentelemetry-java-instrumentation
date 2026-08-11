@@ -34,7 +34,8 @@ public class MessageListenerWrapper implements MessageListener {
     if (parentContext == null) {
       parentContext = Context.current();
     }
-    Instrumenter<MessageView, ConsumeResult> processInstrumenter = consumerProcessInstrumenter();
+    Instrumenter<MessageView, ConsumeResult> processInstrumenter =
+        consumerProcessInstrumenter(messageView);
     if (!processInstrumenter.shouldStart(parentContext, messageView)) {
       return delegator.consume(messageView);
     }
