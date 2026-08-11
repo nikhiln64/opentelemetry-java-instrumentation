@@ -17,6 +17,10 @@
 - Deprecate the gRPC `capture-metadata.client.request` and `capture-metadata.server.request`
   configuration properties and `GrpcTelemetryBuilder` captured request metadata methods in favor of
   include/exclude request metadata selectors.
+- Deprecate the Logback appender `experimental.capture-mdc-attributes` configuration property and
+  `OpenTelemetryAppender#setCaptureMdcAttributes(String)` in favor of include/exclude MDC attribute
+  selectors and `OpenTelemetryAppender#setMdcAttributes(IncludeExclude)`. The deprecated property
+  and method will be removed in 3.0.
 - Deprecate `otel.instrumentation.runtime-telemetry.experimental.prefer-jfr` and
   `io.opentelemetry.instrumentation.runtimetelemetry.internal.Experimental#setPreferJfrMetrics(RuntimeTelemetryBuilder, boolean)`
   in favor of `otel.instrumentation.runtime-telemetry.experimental.jfr-metrics.included` and
