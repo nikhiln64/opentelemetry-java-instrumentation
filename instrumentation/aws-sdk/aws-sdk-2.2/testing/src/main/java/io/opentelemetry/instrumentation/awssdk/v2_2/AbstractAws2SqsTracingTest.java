@@ -616,7 +616,7 @@ public abstract class AbstractAws2SqsTracingTest extends AbstractAws2SqsBaseTest
     client.sendMessage(sendMessageRequest);
     client.sendMessageBatch(sendMessageBatchRequest);
 
-    SqsMetricsAssertions.assertProducerMetrics(getTesting(), 2, 4);
+    SqsMetricsAssertions.assertProducerMetrics(getTesting(), sqsPort, 2, 4);
   }
 
   @Test

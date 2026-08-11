@@ -42,6 +42,7 @@ import io.opentelemetry.instrumentation.api.instrumenter.InstrumenterBuilder;
 import io.opentelemetry.instrumentation.api.instrumenter.SpanKindExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.SpanNameExtractor;
 import io.opentelemetry.instrumentation.api.semconv.http.HttpClientAttributesExtractor;
+import io.opentelemetry.instrumentation.api.semconv.network.ServerAttributesExtractor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -69,6 +70,27 @@ public final class AwsSdkInstrumenterFactory {
   static final AwsSdkHttpAttributesGetter httpAttributesGetter = new AwsSdkHttpAttributesGetter();
   static final AttributesExtractor<ExecutionAttributes, Response> httpAttributesExtractor =
       HttpClientAttributesExtractor.create(httpAttributesGetter);
+  private static final AttributesExtractor<ExecutionAttributes, Response>
+      lateServerAttributesExtractor =
+          new AttributesExtractor<ExecutionAttributes, Response>() {
+            private final AttributesExtractor<ExecutionAttributes, Response> delegate =
+                ServerAttributesExtractor.create(httpAttributesGetter);
+
+            @Override
+            public void onStart(
+                AttributesBuilder attributes, Context context, ExecutionAttributes request) {}
+
+            @Override
+            public void onEnd(
+                AttributesBuilder attributes,
+                Context context,
+                ExecutionAttributes request,
+                @Nullable Response response,
+                @Nullable Throwable error) {
+              // The finalized HTTP request is not available when the producer instrumenter starts.
+              delegate.onStart(attributes, context, request);
+            }
+          };
 
   private static final AttributesExtractor<ExecutionAttributes, Response>
       httpClientSuppressionAttributesExtractor =
@@ -128,6 +150,13 @@ public final class AwsSdkInstrumenterFactory {
     return captureExperimentalSpanAttributes
         ? extendedAttributesExtractors
         : defaultAttributesExtractors;
+  }
+
+  private List<AttributesExtractor<ExecutionAttributes, Response>> producerAttributesExtractors() {
+    List<AttributesExtractor<ExecutionAttributes, Response>> extractors =
+        new ArrayList<>(attributesExtractors());
+    extractors.add(lateServerAttributesExtractor);
+    return extractors;
   }
 
   private List<AttributesExtractor<ExecutionAttributes, Response>> consumerAttributesExtractors() {
@@ -267,7 +296,7 @@ public final class AwsSdkInstrumenterFactory {
         openTelemetry,
         MessagingSpanNameExtractor.create(getter, operationType, SEND_OPERATION_NAME),
         SpanKindExtractor.alwaysProducer(),
-        attributesExtractors(),
+        producerAttributesExtractors(),
         singletonList(messagingAttributeExtractor),
         builder -> {
           builder.addOperationMetrics(MessagingProducerMetrics.getForOperationType());

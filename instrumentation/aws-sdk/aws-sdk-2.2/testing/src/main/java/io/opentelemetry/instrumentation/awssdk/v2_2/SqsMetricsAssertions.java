@@ -28,7 +28,7 @@ final class SqsMetricsAssertions {
   };
 
   static void assertProducerMetrics(
-      InstrumentationExtension testing, long operationCount, long messageCount) {
+      InstrumentationExtension testing, int serverPort, long operationCount, long messageCount) {
     if (!emitStableMessagingSemconv()) {
       assertNoMessagingMetrics(testing);
       return;
@@ -60,8 +60,11 @@ final class SqsMetricsAssertions {
                                                 equalTo(MESSAGING_SYSTEM, AWS_SQS),
                                                 equalTo(ERROR_TYPE, null),
                                                 equalTo(MESSAGING_DESTINATION_NAME, "testSdkSqs"),
-                                                equalTo(MESSAGING_OPERATION_TYPE, "send"))))));
-    assertMessageCounter(testing, "messaging.client.sent.messages", "send", messageCount, false, 0);
+                                                equalTo(MESSAGING_OPERATION_TYPE, "send"),
+                                                equalTo(SERVER_ADDRESS, "localhost"),
+                                                equalTo(SERVER_PORT, serverPort))))));
+    assertMessageCounter(
+        testing, "messaging.client.sent.messages", "send", messageCount, true, serverPort);
     assertNoDeprecatedMessagingMetrics(testing);
   }
 
