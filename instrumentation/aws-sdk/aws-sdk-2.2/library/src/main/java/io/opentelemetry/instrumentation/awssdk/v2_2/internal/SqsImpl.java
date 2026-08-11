@@ -134,6 +134,9 @@ public final class SqsImpl {
     if (!(request instanceof ReceiveMessageRequest)) {
       return false;
     }
+    if (TracingExecutionInterceptor.isSqsInternalListenerPoll(executionAttributes)) {
+      return true;
+    }
     io.opentelemetry.context.Context parentContext =
         TracingExecutionInterceptor.getParentContext(executionAttributes);
     Instrumenter<SqsReceiveRequest, Response> consumerReceiveInstrumenter =
