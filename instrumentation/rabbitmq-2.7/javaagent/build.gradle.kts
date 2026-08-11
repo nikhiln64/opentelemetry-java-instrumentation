@@ -50,6 +50,19 @@ tasks {
     systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
   }
 
+  val testMessagingPreviewReceiveSpansDisabled =
+    register<Test>("testMessagingPreviewReceiveSpansDisabled") {
+      testClassesDirs = sourceSets.test.get().output.classesDirs
+      classpath = sourceSets.test.get().runtimeClasspath
+      filter {
+        includeTestsMatching("RabbitMqReceiveDisabledTest")
+      }
+      include("**/RabbitMqReceiveDisabledTest.*")
+      jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=false")
+      jvmArgs("-Dotel.semconv-stability.preview=messaging")
+      systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
+    }
+
   val testBothSemconv = register<Test>("testBothSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -65,11 +78,31 @@ tasks {
     systemProperty("metadataConfig", "otel.instrumentation.common.v3-preview=true")
   }
 
+  val testV3PreviewReceiveSpansDisabled =
+    register<Test>("testV3PreviewReceiveSpansDisabled") {
+      testClassesDirs = sourceSets.test.get().output.classesDirs
+      classpath = sourceSets.test.get().runtimeClasspath
+      filter {
+        includeTestsMatching("RabbitMqReceiveDisabledTest")
+      }
+      include("**/RabbitMqReceiveDisabledTest.*")
+      jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=false")
+      jvmArgs("-Dotel.instrumentation.common.v3-preview=true")
+      systemProperty("metadataConfig", "otel.instrumentation.common.v3-preview=true")
+    }
+
   test {
     jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
   }
 
   check {
-    dependsOn(testExperimental, testMessagingPreview, testV3Preview, testBothSemconv)
+    dependsOn(
+      testExperimental,
+      testMessagingPreview,
+      testMessagingPreviewReceiveSpansDisabled,
+      testV3Preview,
+      testV3PreviewReceiveSpansDisabled,
+      testBothSemconv,
+    )
   }
 }
