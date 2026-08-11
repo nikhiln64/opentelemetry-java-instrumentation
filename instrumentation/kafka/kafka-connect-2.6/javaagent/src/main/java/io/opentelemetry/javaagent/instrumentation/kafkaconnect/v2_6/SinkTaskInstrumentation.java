@@ -58,6 +58,10 @@ class SinkTaskInstrumentation implements TypeInstrumentation {
 
       @Nullable
       public static AdviceScope start(Collection<SinkRecord> records) {
+        if (records.isEmpty()) {
+          return null;
+        }
+
         Context parentContext = Context.current();
 
         KafkaConnectTask task = new KafkaConnectTask(records);

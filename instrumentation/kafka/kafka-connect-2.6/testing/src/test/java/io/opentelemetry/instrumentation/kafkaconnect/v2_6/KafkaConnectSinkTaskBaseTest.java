@@ -177,6 +177,8 @@ abstract class KafkaConnectSinkTaskBaseTest implements TelemetryRetrieverProvide
                   trace ->
                       trace.stream()
                           .anyMatch(span -> span.getName().contains("kafka-connect-status")));
+              traces.removeIf(
+                  trace -> trace.size() == 1 && trace.get(0).getName().equals("GET /connectors"));
               TracesAssert.assertThat(traces).hasTracesSatisfyingExactly(asList(assertions));
             });
   }

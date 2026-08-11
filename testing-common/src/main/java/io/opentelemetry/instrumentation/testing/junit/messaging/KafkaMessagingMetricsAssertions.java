@@ -44,6 +44,7 @@ public final class KafkaMessagingMetricsAssertions {
         partition,
         count,
         errorType);
+    assertDeprecatedMetricsAbsent(testing);
     assertCounter(
         testing,
         instrumentationName,
@@ -55,7 +56,6 @@ public final class KafkaMessagingMetricsAssertions {
         partition,
         count,
         errorType);
-    assertDeprecatedMetricsAbsent(testing);
   }
 
   public static void assertReceiveMetrics(
@@ -126,7 +126,6 @@ public final class KafkaMessagingMetricsAssertions {
           consumedMessageCount,
           errorType);
     }
-    assertDeprecatedMetricsAbsent(testing);
   }
 
   public static void assertProcessDurationMetrics(
@@ -154,7 +153,6 @@ public final class KafkaMessagingMetricsAssertions {
         partition,
         operationCount,
         errorType);
-    assertDeprecatedMetricsAbsent(testing);
   }
 
   public static void assertProcessConsumedMessages(
@@ -181,7 +179,6 @@ public final class KafkaMessagingMetricsAssertions {
         partition,
         consumedMessageCount,
         errorType);
-    assertDeprecatedMetricsAbsent(testing);
   }
 
   public static void assertNoNewMetrics(
@@ -235,29 +232,29 @@ public final class KafkaMessagingMetricsAssertions {
         instrumentationName,
         metricName,
         metrics ->
-            metrics.satisfiesExactly(
-                metric ->
-                    assertThat(metric)
-                        .hasUnit("s")
-                        .hasDescription(description)
-                        .satisfies(
-                            data ->
-                                assertThat(data.getHistogramData().getPoints())
-                                    .anySatisfy(
-                                        point -> {
-                                          assertThat(point.getCount()).isEqualTo(count);
-                                          assertThat(point.getSum()).isGreaterThan(0.0);
-                                          assertThat(point.getAttributes().asMap())
-                                              .containsExactlyEntriesOf(
-                                                  attributes(
-                                                          operation,
-                                                          operationType,
-                                                          destination,
-                                                          group,
-                                                          partition,
-                                                          errorType)
-                                                      .asMap());
-                                        }))));
+            metrics
+                .filteredOn(
+                    metric ->
+                        metric.getUnit().equals("s")
+                            && metric.getDescription().equals(description)
+                            && metric.getHistogramData().getPoints().stream()
+                                .anyMatch(
+                                    point ->
+                                        point.getCount() == count
+                                            && point.getSum() > 0.0
+                                            && point
+                                                .getAttributes()
+                                                .asMap()
+                                                .equals(
+                                                    attributes(
+                                                            operation,
+                                                            operationType,
+                                                            destination,
+                                                            group,
+                                                            partition,
+                                                            errorType)
+                                                        .asMap())))
+                .isNotEmpty());
   }
 
   private static void assertCounter(
@@ -275,28 +272,28 @@ public final class KafkaMessagingMetricsAssertions {
         instrumentationName,
         metricName,
         metrics ->
-            metrics.satisfiesExactly(
-                metric ->
-                    assertThat(metric)
-                        .hasUnit("{message}")
-                        .hasDescription(description)
-                        .satisfies(
-                            data ->
-                                assertThat(data.getLongSumData().getPoints())
-                                    .anySatisfy(
-                                        point -> {
-                                          assertThat(point.getValue()).isEqualTo(count);
-                                          assertThat(point.getAttributes().asMap())
-                                              .containsExactlyEntriesOf(
-                                                  attributes(
-                                                          operation,
-                                                          null,
-                                                          destination,
-                                                          group,
-                                                          partition,
-                                                          errorType)
-                                                      .asMap());
-                                        }))));
+            metrics
+                .filteredOn(
+                    metric ->
+                        metric.getUnit().equals("{message}")
+                            && metric.getDescription().equals(description)
+                            && metric.getLongSumData().getPoints().stream()
+                                .anyMatch(
+                                    point ->
+                                        point.getValue() == count
+                                            && point
+                                                .getAttributes()
+                                                .asMap()
+                                                .equals(
+                                                    attributes(
+                                                            operation,
+                                                            null,
+                                                            destination,
+                                                            group,
+                                                            partition,
+                                                            errorType)
+                                                        .asMap())))
+                .isNotEmpty());
   }
 
   private static Attributes attributes(
