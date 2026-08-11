@@ -84,6 +84,13 @@ tasks {
   }
 
   val testMessagingPreview = register<Test>("testMessagingPreview") {
+    testClassesDirs = sourceSets["testNoReceiveTelemetry"].output.classesDirs
+    classpath = sourceSets["testNoReceiveTelemetry"].runtimeClasspath
+    jvmArgs("-Dotel.semconv-stability.preview=messaging")
+    systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
+  }
+
+  val testMessagingPreviewExplicitReceiveTelemetry = register<Test>("testMessagingPreviewExplicitReceiveTelemetry") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     filter {
@@ -92,8 +99,12 @@ tasks {
       includeTestsMatching("SpringKafkaTest.shouldCreateSpansForBatchReceiveAndProcess")
       includeTestsMatching("SpringKafkaTest.shouldHandleFailureInKafkaBatchListener")
     }
+    jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
     jvmArgs("-Dotel.semconv-stability.preview=messaging")
-    systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
+    systemProperty(
+      "metadataConfig",
+      "otel.semconv-stability.preview=messaging,otel.instrumentation.messaging.experimental.receive-telemetry.enabled=true",
+    )
   }
 
   val testBothSemconv = register<Test>("testBothSemconv") {
@@ -128,7 +139,14 @@ tasks {
   }
 
   check {
-    dependsOn(testing.suites, testExperimental, testMessagingPreview, testBothSemconv, testMessagingPreviewNoReceiveTelemetry)
+    dependsOn(
+      testing.suites,
+      testExperimental,
+      testMessagingPreview,
+      testMessagingPreviewExplicitReceiveTelemetry,
+      testBothSemconv,
+      testMessagingPreviewNoReceiveTelemetry,
+    )
   }
 }
 

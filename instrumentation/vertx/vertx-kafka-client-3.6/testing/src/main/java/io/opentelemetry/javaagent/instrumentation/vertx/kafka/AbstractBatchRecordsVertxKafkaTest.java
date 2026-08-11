@@ -6,6 +6,7 @@
 package io.opentelemetry.javaagent.instrumentation.vertx.kafka;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessDurationMetrics;
 import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetricPointCounts;
 import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertProcessMetrics;
 import static io.opentelemetry.instrumentation.testing.junit.messaging.KafkaMessagingMetricsAssertions.assertReceiveMetrics;
@@ -196,25 +197,47 @@ public abstract class AbstractBatchRecordsVertxKafkaTest extends AbstractVertxKa
 
   private void assertBatchMetrics(long messageCount, String errorType) {
     String group = hasConsumerGroup() ? "test" : null;
-    assertReceiveMetrics(
-        testing(),
-        "io.opentelemetry.kafka-clients-0.11",
-        "testBatchTopic",
-        group,
-        null,
-        1,
-        messageCount,
-        null);
-    assertProcessMetrics(
+    if (receiveTelemetryExplicitlyEnabled()) {
+      assertReceiveMetrics(
+          testing(),
+          "io.opentelemetry.kafka-clients-0.11",
+          "testBatchTopic",
+          group,
+          null,
+          1,
+          messageCount,
+          null);
+      assertProcessMetrics(
+          testing(),
+          "io.opentelemetry.vertx-kafka-client-3.6",
+          "testBatchTopic",
+          group,
+          null,
+          1,
+          null,
+          errorType);
+      assertProcessMetricPointCounts(testing(), "io.opentelemetry.vertx-kafka-client-3.6", 2, null);
+      return;
+    }
+
+    assertProcessDurationMetrics(
         testing(),
         "io.opentelemetry.vertx-kafka-client-3.6",
         "testBatchTopic",
         group,
         null,
         1,
-        null,
         errorType);
-    assertProcessMetricPointCounts(testing(), "io.opentelemetry.vertx-kafka-client-3.6", 2, null);
+    assertProcessMetrics(
+        testing(),
+        "io.opentelemetry.vertx-kafka-client-3.6",
+        "testBatchTopic",
+        group,
+        "0",
+        messageCount,
+        messageCount,
+        null);
+    assertProcessMetricPointCounts(testing(), "io.opentelemetry.vertx-kafka-client-3.6", 2, 1);
   }
 
   private void assertStableBatchSuccess(

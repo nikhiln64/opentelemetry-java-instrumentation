@@ -203,15 +203,17 @@ public abstract class AbstractSingleRecordVertxKafkaTest extends AbstractVertxKa
 
   private void assertSingleMetrics(String errorType) {
     String group = hasConsumerGroup() ? "test" : null;
-    assertReceiveMetrics(
-        testing(),
-        "io.opentelemetry.kafka-clients-0.11",
-        "testSingleTopic",
-        group,
-        null,
-        1,
-        1,
-        null);
+    if (receiveTelemetryExplicitlyEnabled()) {
+      assertReceiveMetrics(
+          testing(),
+          "io.opentelemetry.kafka-clients-0.11",
+          "testSingleTopic",
+          group,
+          null,
+          1,
+          1,
+          null);
+    }
     assertProcessMetrics(
         testing(),
         "io.opentelemetry.vertx-kafka-client-3.6",
@@ -219,7 +221,7 @@ public abstract class AbstractSingleRecordVertxKafkaTest extends AbstractVertxKa
         group,
         "0",
         1,
-        null,
+        receiveTelemetryExplicitlyEnabled() ? null : 1L,
         errorType);
   }
 

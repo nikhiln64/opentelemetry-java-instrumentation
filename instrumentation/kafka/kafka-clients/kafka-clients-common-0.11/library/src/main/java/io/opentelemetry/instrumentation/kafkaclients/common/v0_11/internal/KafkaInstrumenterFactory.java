@@ -146,11 +146,22 @@ public final class KafkaInstrumenterFactory {
   }
 
   public Instrumenter<KafkaProcessRequest, Void> createConsumerProcessInstrumenter() {
-    return createConsumerProcessInstrumenter(emptyList());
+    return createConsumerProcessInstrumenter(emptyList(), !receiveInstrumentationEnabled());
+  }
+
+  public Instrumenter<KafkaProcessRequest, Void> createConsumerProcessInstrumenter(
+      boolean recordConsumedMessages) {
+    return createConsumerProcessInstrumenter(emptyList(), recordConsumedMessages);
   }
 
   public Instrumenter<KafkaProcessRequest, Void> createConsumerProcessInstrumenter(
       Iterable<AttributesExtractor<KafkaProcessRequest, Void>> extractors) {
+    return createConsumerProcessInstrumenter(extractors, !receiveInstrumentationEnabled());
+  }
+
+  private Instrumenter<KafkaProcessRequest, Void> createConsumerProcessInstrumenter(
+      Iterable<AttributesExtractor<KafkaProcessRequest, Void>> extractors,
+      boolean recordConsumedMessages) {
     KafkaConsumerAttributesGetter getter = new KafkaConsumerAttributesGetter();
     MessagingOperationType operationType = MessagingOperationType.PROCESS;
 
@@ -166,7 +177,7 @@ public final class KafkaInstrumenterFactory {
             .addAttributesExtractors(extractors)
             .addOperationMetrics(MessagingProcessMetrics.get())
             .setErrorCauseExtractor(errorCauseExtractor);
-    if (!receiveInstrumentationEnabled()) {
+    if (recordConsumedMessages) {
       builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
     }
     if (captureExperimentalSpanAttributes) {
@@ -206,7 +217,7 @@ public final class KafkaInstrumenterFactory {
                     openTelemetry.getPropagators().getTextMapPropagator()))
             .addOperationMetrics(MessagingProcessMetrics.get())
             .setErrorCauseExtractor(errorCauseExtractor);
-    if (recordConsumedMessagesWhenReceiveTelemetryDisabled && !receiveInstrumentationEnabled()) {
+    if (recordConsumedMessagesWhenReceiveTelemetryDisabled) {
       builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
     }
     setMessagingProcessExceptionEventExtractor(builder);

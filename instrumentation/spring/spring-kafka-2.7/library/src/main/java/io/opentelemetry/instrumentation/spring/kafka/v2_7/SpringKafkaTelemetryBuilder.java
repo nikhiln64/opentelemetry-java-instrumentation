@@ -71,6 +71,11 @@ public final class SpringKafkaTelemetryBuilder {
     }
 
     return new SpringKafkaTelemetry(
-        factory.createConsumerProcessInstrumenter(), factory.createBatchProcessInstrumenter(true));
+        factory.createConsumerProcessInstrumenter(
+            messagingReceiveInstrumentationEnabled == null
+                || !messagingReceiveInstrumentationEnabled),
+        factory.createBatchProcessInstrumenter(
+            messagingReceiveInstrumentationEnabled == null
+                || !messagingReceiveInstrumentationEnabled));
   }
 }
