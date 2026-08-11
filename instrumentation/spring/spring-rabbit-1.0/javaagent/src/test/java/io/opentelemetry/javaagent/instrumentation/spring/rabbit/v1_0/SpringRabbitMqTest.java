@@ -381,7 +381,7 @@ class SpringRabbitMqTest {
     static final String LEGACY_ANONYMOUS_QUEUE = "123e4567-e89b-12d3-a456-426614174000";
     // the name that spring-cloud-stream's rabbit binder generates for a consumer without a group
     static final String ANONYMOUS_GROUP_QUEUE = "testDestination.anonymous.Q_bA0sGiTcyXMWXZMyOHwA";
-    static final CountDownLatch errorMessageConsumed = new CountDownLatch(1);
+    private static final CountDownLatch errorMessageConsumed = new CountDownLatch(1);
 
     @Bean
     Queue testQueue() {

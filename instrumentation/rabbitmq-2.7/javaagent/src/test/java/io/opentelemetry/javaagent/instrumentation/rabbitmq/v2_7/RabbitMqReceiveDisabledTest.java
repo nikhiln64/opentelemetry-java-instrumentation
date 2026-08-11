@@ -39,8 +39,15 @@ class RabbitMqReceiveDisabledTest extends AbstractRabbitMqTest {
 
   @AfterEach
   void tearDown() throws IOException, TimeoutException {
-    channel.close();
-    connection.close();
+    try {
+      if (channel != null) {
+        channel.close();
+      }
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
   }
 
   @Test

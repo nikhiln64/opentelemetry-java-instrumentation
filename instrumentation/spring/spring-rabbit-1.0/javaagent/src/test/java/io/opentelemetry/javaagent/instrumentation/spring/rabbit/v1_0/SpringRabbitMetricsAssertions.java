@@ -19,7 +19,7 @@ import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.sdk.metrics.data.MetricData;
 
-final class SpringRabbitMetricsAssertions {
+class SpringRabbitMetricsAssertions {
 
   private static final String RABBIT_INSTRUMENTATION_NAME = "io.opentelemetry.rabbitmq-2.7";
   private static final String SPRING_INSTRUMENTATION_NAME = "io.opentelemetry.spring-rabbit-1.0";
