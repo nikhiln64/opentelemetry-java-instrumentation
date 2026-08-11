@@ -121,8 +121,8 @@ abstract class AbstractRocketMqClientTest {
             .setSubscriptionExpressions(subscriptionExpressions)
             .setMessageListener(
                 messageView -> {
-                  testing().runWithSpan("messageListener", () -> {});
                   if (failurePending.compareAndSet(true, false)) {
+                    testing().runWithSpan("messageListener", () -> {});
                     return ConsumeResult.FAILURE;
                   }
                   CountDownLatch retryGate = failureRetryGate.get();
@@ -134,6 +134,7 @@ abstract class AbstractRocketMqClientTest {
                       return ConsumeResult.FAILURE;
                     }
                   }
+                  testing().runWithSpan("messageListener", () -> {});
                   return ConsumeResult.SUCCESS;
                 })
             .build();
