@@ -32,7 +32,6 @@ import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.LibraryInstrumentationExtension;
 import java.util.List;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
 import org.apache.rocketmq.client.consumer.listener.ConsumeReturnType;
 import org.apache.rocketmq.client.hook.ConsumeMessageContext;
 import org.apache.rocketmq.client.hook.SendMessageContext;
@@ -63,7 +62,7 @@ class RocketMqMetricsTest {
   @ParameterizedTest
   @MethodSource("producerCases")
   void recordsProducerMetrics(
-      Message message, long expectedCount, @Nullable Throwable error, @Nullable String errorType) {
+      Message message, long expectedCount, Throwable error, String errorType) {
     assumeTrue(emitStableMessagingSemconv());
     SendMessageContext request = mock(SendMessageContext.class);
     when(request.getMessage()).thenReturn(message);
@@ -107,7 +106,7 @@ class RocketMqMetricsTest {
   @ParameterizedTest
   @MethodSource("consumerCases")
   void recordsProcessMetrics(
-      List<MessageExt> messages, @Nullable String consumeErrorType, long expectedCount) {
+      List<MessageExt> messages, String consumeErrorType, long expectedCount) {
     assumeTrue(emitStableMessagingSemconv());
     ConsumeMessageContext response = new ConsumeMessageContext();
     response.setSuccess(consumeErrorType == null);
@@ -207,8 +206,8 @@ class RocketMqMetricsTest {
       long expectedCount,
       String operationName,
       String destination,
-      @Nullable String consumerGroup,
-      @Nullable String errorType) {
+      String consumerGroup,
+      String errorType) {
     testing.waitAndAssertMetrics(
         INSTRUMENTATION_NAME,
         metricName,
@@ -236,9 +235,9 @@ class RocketMqMetricsTest {
       String metricName,
       String operationName,
       String destination,
-      @Nullable String consumerGroup,
-      @Nullable String operationType,
-      @Nullable String errorType) {
+      String consumerGroup,
+      String operationType,
+      String errorType) {
     testing.waitAndAssertMetrics(
         INSTRUMENTATION_NAME,
         metricName,
