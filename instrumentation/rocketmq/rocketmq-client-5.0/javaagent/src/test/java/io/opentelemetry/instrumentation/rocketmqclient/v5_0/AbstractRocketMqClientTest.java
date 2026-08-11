@@ -38,6 +38,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 
@@ -128,7 +129,9 @@ abstract class AbstractRocketMqClientTest {
                   CountDownLatch retryGate = failureRetryGate.get();
                   if (retryGate != null) {
                     try {
-                      retryGate.await();
+                      if (!retryGate.await(45, SECONDS)) {
+                        return ConsumeResult.FAILURE;
+                      }
                     } catch (InterruptedException e) {
                       Thread.currentThread().interrupt();
                       return ConsumeResult.FAILURE;
@@ -1131,7 +1134,11 @@ abstract class AbstractRocketMqClientTest {
                                     .getMessageId()
                                     .toString()
                                     .equals(span.getAttributes().get(MESSAGING_MESSAGE_ID))
-                                && span.getStatus().equals(StatusData.unset()))
+                                && span.getStatus().equals(StatusData.unset())
+                                && ("process"
+                                        .equals(span.getAttributes().get(MESSAGING_OPERATION_NAME))
+                                    || "process"
+                                        .equals(span.getAttributes().get(MESSAGING_OPERATION))))
                     .hasSize(1));
   }
 
