@@ -17,6 +17,11 @@
 - Deprecate the gRPC `capture-metadata.client.request` and `capture-metadata.server.request`
   configuration properties and `GrpcTelemetryBuilder` captured request metadata methods in favor of
   include/exclude request metadata selectors.
+- Deprecate `otel.instrumentation.servlet.experimental.capture-request-parameters` and
+  `Experimental#setCaptureRequestParameters(...)` in favor of the
+  `otel.instrumentation.servlet.experimental.request-parameters.{included,excluded}` properties and
+  `Experimental#setRequestParameters(ServletTelemetryBuilder, IncludeExclude)`. The deprecated
+  property and method remain as include-only aliases and will be removed in 3.0.
 - Deprecate `otel.instrumentation.runtime-telemetry.experimental.prefer-jfr` and
   `io.opentelemetry.instrumentation.runtimetelemetry.internal.Experimental#setPreferJfrMetrics(RuntimeTelemetryBuilder, boolean)`
   in favor of `otel.instrumentation.runtime-telemetry.experimental.jfr-metrics.included` and
