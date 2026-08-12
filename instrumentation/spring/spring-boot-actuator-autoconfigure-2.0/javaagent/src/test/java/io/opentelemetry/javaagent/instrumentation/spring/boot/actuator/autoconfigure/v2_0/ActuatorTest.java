@@ -8,7 +8,10 @@ package io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconf
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -18,6 +21,7 @@ import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.javaagent.instrumentation.micrometer.v1_5.MicrometerSingletons;
 import io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconfigure.v2_0.SpringApp.TestBean;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -120,16 +124,46 @@ class ActuatorTest {
     MeterRegistry otelMeterRegistry = MicrometerSingletons.meterRegistry();
     CompositeMeterRegistry composite =
         (CompositeMeterRegistry) context.getBean(MeterRegistry.class);
-    for (MeterRegistry registry : composite.getRegistries()) {
-      if (registry != otelMeterRegistry) {
-        composite.remove(registry);
-      }
-    }
+    removeRegistriesOtherThan(composite, otelMeterRegistry);
     MeterRegistry userDefinedOtelRegistry = newOpenTelemetryMeterRegistry(otelMeterRegistry);
     cleanup.deferCleanup(userDefinedOtelRegistry::close);
     composite.add(userDefinedOtelRegistry);
 
     assertThat(otelMeterRegistry.find("test-counter").counter()).isNotNull();
+  }
+
+  @Test
+  void shouldTrackRegistryAddedBeforeRebindingFailure() {
+    ConfigurableApplicationContext context = new SpringApplication(SpringApp.class).run();
+    cleanup.deferCleanup(context);
+
+    MeterRegistry otelMeterRegistry = MicrometerSingletons.meterRegistry();
+    CompositeMeterRegistry composite =
+        (CompositeMeterRegistry) context.getBean(MeterRegistry.class);
+    removeRegistriesOtherThan(composite, otelMeterRegistry);
+    SimpleMeterRegistry throwingRegistry =
+        new SimpleMeterRegistry() {
+          @Override
+          protected Counter newCounter(Meter.Id id) {
+            throw new IllegalStateException("test");
+          }
+        };
+    cleanup.deferCleanup(throwingRegistry::close);
+
+    assertThatThrownBy(() -> composite.add(throwingRegistry))
+        .isInstanceOf(IllegalStateException.class);
+
+    assertThat(composite.getRegistries()).contains(throwingRegistry);
+    assertThat(otelMeterRegistry.find("test-counter").counter()).isNull();
+  }
+
+  private static void removeRegistriesOtherThan(
+      CompositeMeterRegistry composite, MeterRegistry retainedRegistry) {
+    for (MeterRegistry registry : new ArrayList<>(composite.getRegistries())) {
+      if (registry != retainedRegistry) {
+        composite.remove(registry);
+      }
+    }
   }
 
   private static MeterRegistry newOpenTelemetryMeterRegistry(MeterRegistry otelMeterRegistry)

@@ -9,7 +9,6 @@ import static net.bytebuddy.matcher.ElementMatchers.isMethod;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
@@ -44,13 +43,9 @@ class CompositeMeterRegistryInstrumentation implements TypeInstrumentation {
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void onExit(
-        @Advice.This CompositeMeterRegistry compositeMeterRegistry,
-        @Advice.Argument(0) MeterRegistry meterRegistry,
-        @Advice.Enter boolean locked,
-        @Advice.Thrown Throwable throwable) {
+        @Advice.This CompositeMeterRegistry compositeMeterRegistry, @Advice.Enter boolean locked) {
       if (locked) {
-        MicrometerSingletons.endMeterRegistryChange(
-            compositeMeterRegistry, meterRegistry, throwable == null, true);
+        MicrometerSingletons.endMeterRegistryChange(compositeMeterRegistry);
       }
     }
   }
@@ -65,13 +60,9 @@ class CompositeMeterRegistryInstrumentation implements TypeInstrumentation {
 
     @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class)
     public static void onExit(
-        @Advice.This CompositeMeterRegistry compositeMeterRegistry,
-        @Advice.Argument(0) MeterRegistry meterRegistry,
-        @Advice.Enter boolean locked,
-        @Advice.Thrown Throwable throwable) {
+        @Advice.This CompositeMeterRegistry compositeMeterRegistry, @Advice.Enter boolean locked) {
       if (locked) {
-        MicrometerSingletons.endMeterRegistryChange(
-            compositeMeterRegistry, meterRegistry, throwable == null, false);
+        MicrometerSingletons.endMeterRegistryChange(compositeMeterRegistry);
       }
     }
   }

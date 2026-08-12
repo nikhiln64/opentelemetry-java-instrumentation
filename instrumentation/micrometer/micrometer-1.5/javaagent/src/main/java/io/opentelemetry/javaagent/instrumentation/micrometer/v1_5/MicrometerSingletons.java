@@ -75,23 +75,13 @@ public class MicrometerSingletons {
     return true;
   }
 
-  public static void endMeterRegistryChange(
-      CompositeMeterRegistry compositeMeterRegistry,
-      MeterRegistry meterRegistry,
-      boolean successful,
-      boolean added) {
+  public static void endMeterRegistryChange(CompositeMeterRegistry compositeMeterRegistry) {
     try {
-      if (successful) {
-        synchronized (registryContexts) {
-          for (RegistryContext context : registryContexts.values()) {
-            if (added) {
-              context.add(compositeMeterRegistry, meterRegistry);
-            } else {
-              context.remove(compositeMeterRegistry, meterRegistry);
-            }
-          }
-          updateMetersHiddenFromSearch();
+      synchronized (registryContexts) {
+        for (RegistryContext context : registryContexts.values()) {
+          context.update(compositeMeterRegistry);
         }
+        updateMetersHiddenFromSearch();
       }
     } finally {
       registryChangeLock.unlock();
@@ -129,19 +119,14 @@ public class MicrometerSingletons {
       }
     }
 
-    void add(CompositeMeterRegistry compositeMeterRegistry, MeterRegistry meterRegistry) {
+    void update(CompositeMeterRegistry compositeMeterRegistry) {
       IdentityHashMap<MeterRegistry, Boolean> registries =
           compositeMeterRegistries.get(compositeMeterRegistry);
       if (registries != null) {
-        registries.put(meterRegistry, true);
-      }
-    }
-
-    void remove(CompositeMeterRegistry compositeMeterRegistry, MeterRegistry meterRegistry) {
-      IdentityHashMap<MeterRegistry, Boolean> registries =
-          compositeMeterRegistries.get(compositeMeterRegistry);
-      if (registries != null) {
-        registries.remove(meterRegistry);
+        registries.clear();
+        for (MeterRegistry registry : compositeMeterRegistry.getRegistries()) {
+          registries.put(registry, true);
+        }
       }
     }
 
@@ -149,7 +134,12 @@ public class MicrometerSingletons {
       if (compositeMeterRegistries.isEmpty()) {
         return false;
       }
+      boolean containsGlobalRegistry = false;
       for (IdentityHashMap<MeterRegistry, Boolean> registries : compositeMeterRegistries.values()) {
+        if (!registries.containsKey(meterRegistry)) {
+          continue;
+        }
+        containsGlobalRegistry = true;
         boolean hasReadableRegistry = false;
         for (MeterRegistry registry : registries.keySet()) {
           if (!(registry instanceof OpenTelemetryMeterRegistry)) {
@@ -161,7 +151,7 @@ public class MicrometerSingletons {
           return false;
         }
       }
-      return true;
+      return containsGlobalRegistry;
     }
   }
 
