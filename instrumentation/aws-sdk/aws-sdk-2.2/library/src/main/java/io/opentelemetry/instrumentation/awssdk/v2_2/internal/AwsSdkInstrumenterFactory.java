@@ -291,7 +291,7 @@ public final class AwsSdkInstrumenterFactory {
         @Override
         public Context onStart(Context context, Attributes startAttributes, long startNanos) {
           if (!Boolean.TRUE.equals(startAttributes.get(RECORD_CONSUMED_MESSAGES))) {
-            return context;
+            return context.with(RECORD_CONSUMED_MESSAGES_STATE, false);
           }
           return delegate
               .onStart(context, startAttributes, startNanos)
