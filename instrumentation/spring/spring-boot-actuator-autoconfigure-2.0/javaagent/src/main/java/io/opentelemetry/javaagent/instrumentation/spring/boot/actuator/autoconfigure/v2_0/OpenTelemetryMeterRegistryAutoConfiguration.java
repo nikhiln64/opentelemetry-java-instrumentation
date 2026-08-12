@@ -5,19 +5,14 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconfigure.v2_0;
 
-import static java.util.Collections.emptyList;
-import static java.util.Objects.requireNonNull;
-
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.javaagent.instrumentation.micrometer.v1_5.MicrometerSingletons;
 import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.Nullable;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
@@ -51,26 +46,23 @@ public class OpenTelemetryMeterRegistryAutoConfiguration {
   }
 
   @Bean
-  static MeterRegistryVisibility configureMeterRegistryVisibility() {
-    return new MeterRegistryVisibility();
+  static MeterRegistryVisibility configureMeterRegistryVisibility(
+      ConfigurableListableBeanFactory beanFactory) {
+    return new MeterRegistryVisibility(beanFactory);
   }
 
-  static class MeterRegistryVisibility
-      implements BeanFactoryPostProcessor, SmartInitializingSingleton, DisposableBean {
+  static class MeterRegistryVisibility implements SmartInitializingSingleton, DisposableBean {
 
-    @Nullable private ConfigurableListableBeanFactory beanFactory;
+    private final ConfigurableListableBeanFactory beanFactory;
 
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+    MeterRegistryVisibility(ConfigurableListableBeanFactory beanFactory) {
       this.beanFactory = beanFactory;
-      MicrometerSingletons.registerMeterRegistryContext(this, emptyList());
     }
 
     @Override
     public void afterSingletonsInstantiated() {
       List<CompositeMeterRegistry> compositeMeterRegistries = new ArrayList<>();
-      for (MeterRegistry registry :
-          requireNonNull(beanFactory).getBeansOfType(MeterRegistry.class).values()) {
+      for (MeterRegistry registry : beanFactory.getBeansOfType(MeterRegistry.class).values()) {
         if (registry instanceof CompositeMeterRegistry) {
           compositeMeterRegistries.add((CompositeMeterRegistry) registry);
         }
