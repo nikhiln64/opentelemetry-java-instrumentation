@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jms.config.JmsListenerEndpointRegistry;
 import org.springframework.jms.core.JmsTemplate;
@@ -66,14 +67,7 @@ abstract class AbstractSpringJmsListenerTest {
     app.setDefaultProperties(defaultConfig());
     ConfigurableApplicationContext applicationContext = app.run();
     cleanup.deferCleanup(applicationContext);
-    JmsListenerEndpointRegistry registry =
-        applicationContext.getBean(JmsListenerEndpointRegistry.class);
-    await()
-        .until(
-            () ->
-                registry.getListenerContainers().stream()
-                    .map(DefaultMessageListenerContainer.class::cast)
-                    .allMatch(container -> container.getActiveConsumerCount() > 0));
+    awaitDurableSubscriptions(applicationContext);
 
     JmsTemplate jmsTemplate = new JmsTemplate(applicationContext.getBean(ConnectionFactory.class));
     jmsTemplate.setPubSubDomain(true);
@@ -91,6 +85,19 @@ abstract class AbstractSpringJmsListenerTest {
   }
 
   abstract void assertSpringJmsListener();
+
+  // the listener containers subscribe asynchronously after the application context has started, and
+  // a message published to a topic before its durable subscription exists is never delivered
+  static void awaitDurableSubscriptions(ApplicationContext applicationContext) {
+    JmsListenerEndpointRegistry registry =
+        applicationContext.getBean(JmsListenerEndpointRegistry.class);
+    await()
+        .until(
+            () ->
+                registry.getListenerContainers().stream()
+                    .map(DefaultMessageListenerContainer.class::cast)
+                    .allMatch(DefaultMessageListenerContainer::isRegisteredWithDestination));
+  }
 
   static Map<String, Object> defaultConfig() {
     Map<String, Object> props = new HashMap<>();

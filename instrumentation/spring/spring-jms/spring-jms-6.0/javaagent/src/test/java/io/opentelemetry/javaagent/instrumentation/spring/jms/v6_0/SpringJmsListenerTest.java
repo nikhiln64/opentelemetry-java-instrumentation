@@ -118,6 +118,7 @@ class SpringJmsListenerTest extends AbstractSpringJmsListenerTest {
     app.setDefaultProperties(defaultConfig());
     ConfigurableApplicationContext applicationContext = app.run();
     cleanup.deferCleanup(applicationContext);
+    awaitDurableSubscriptions(applicationContext);
 
     JmsTemplate jmsTemplate = new JmsTemplate(applicationContext.getBean(ConnectionFactory.class));
     jmsTemplate.setPubSubDomain(true);

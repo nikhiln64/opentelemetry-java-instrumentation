@@ -38,7 +38,7 @@ class SpringListenerSuppressReceiveSpansTest extends AbstractJmsTest {
             () ->
                 registry.getListenerContainers().stream()
                     .map(DefaultMessageListenerContainer.class::cast)
-                    .allMatch(container -> container.getActiveConsumerCount() > 0));
+                    .allMatch(DefaultMessageListenerContainer::isRegisteredWithDestination));
     ConnectionFactory factory = context.getBean(ConnectionFactory.class);
     JmsTemplate template = new JmsTemplate(factory);
     template.setPubSubDomain(true);
