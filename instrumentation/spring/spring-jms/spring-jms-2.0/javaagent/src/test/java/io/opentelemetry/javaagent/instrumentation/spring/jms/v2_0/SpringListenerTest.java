@@ -236,10 +236,6 @@ class SpringListenerTest extends AbstractJmsTest {
             : "io.opentelemetry.spring-jms-2.0");
   }
 
-  static void assertMetrics(InstrumentationExtension testing, boolean receiveTelemetryEnabled) {
-    assertMetrics(testing, receiveTelemetryEnabled, "io.opentelemetry.spring-jms-2.0");
-  }
-
   static void assertMetrics(
       InstrumentationExtension testing,
       boolean receiveTelemetryEnabled,
