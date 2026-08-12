@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.core.instrument.distribution.HistogramGauges;
 import io.micrometer.core.instrument.distribution.pause.PauseDetector;
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.instrumentation.micrometer.v1_5.internal.Internal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToDoubleFunction;
@@ -35,6 +36,11 @@ import javax.annotation.Nullable;
  * OpenTelemetry} instance.
  */
 public final class OpenTelemetryMeterRegistry extends MeterRegistry {
+
+  static {
+    Internal.internalSetRuntimeMetersHiddenFromSearch(
+        (registry, hidden) -> registry.metersHiddenFromSearch = hidden);
+  }
 
   /**
    * Returns a new {@link OpenTelemetryMeterRegistry} configured with the given {@link
@@ -56,7 +62,7 @@ public final class OpenTelemetryMeterRegistry extends MeterRegistry {
   private final TimeUnit baseTimeUnit;
   private final DistributionStatisticConfigModifier distributionStatisticConfigModifier;
   private final boolean emitMaxGauge;
-  private final boolean metersHiddenFromSearch;
+  private volatile boolean metersHiddenFromSearch;
   private final io.opentelemetry.api.metrics.Meter otelMeter;
 
   OpenTelemetryMeterRegistry(

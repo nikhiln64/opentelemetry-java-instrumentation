@@ -5,18 +5,20 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconfigure.v2_0;
 
-import static java.util.Collections.singletonList;
+import static java.util.Collections.emptyList;
+import static java.util.Objects.requireNonNull;
 
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.javaagent.instrumentation.micrometer.v1_5.MicrometerSingletons;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
-import org.springframework.beans.factory.config.BeanPostProcessor;
+import javax.annotation.Nullable;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -49,29 +51,36 @@ public class OpenTelemetryMeterRegistryAutoConfiguration {
   }
 
   @Bean
-  // static to avoid "is not eligible for getting processed by all BeanPostProcessors" warning
-  static BeanPostProcessor postProcessCompositeMeterRegistry() {
-    return new BeanPostProcessor() {
-      @Override
-      public Object postProcessAfterInitialization(Object bean, String beanName) {
-        if (bean instanceof CompositeMeterRegistry) {
-          CompositeMeterRegistry original = (CompositeMeterRegistry) bean;
-          List<MeterRegistry> list = new ArrayList<>(original.getRegistries());
-          // sort otel registry last since it doesn't support reading metric values
-          // and the actuator endpoint reads metrics from the first registry
-          list.sort(
-              Comparator.comparingInt(
-                  value -> value == MicrometerSingletons.meterRegistry() ? 1 : 0));
-          Set<MeterRegistry> registries = new LinkedHashSet<>(list);
-          return new CompositeMeterRegistry(original.config().clock(), singletonList(original)) {
-            @Override
-            public Set<MeterRegistry> getRegistries() {
-              return registries;
-            }
-          };
+  static MeterRegistryVisibility configureMeterRegistryVisibility() {
+    return new MeterRegistryVisibility();
+  }
+
+  static class MeterRegistryVisibility
+      implements BeanFactoryPostProcessor, SmartInitializingSingleton, DisposableBean {
+
+    @Nullable private ConfigurableListableBeanFactory beanFactory;
+
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+      this.beanFactory = beanFactory;
+      MicrometerSingletons.registerMeterRegistryContext(this, emptyList());
+    }
+
+    @Override
+    public void afterSingletonsInstantiated() {
+      List<CompositeMeterRegistry> compositeMeterRegistries = new ArrayList<>();
+      for (MeterRegistry registry :
+          requireNonNull(beanFactory).getBeansOfType(MeterRegistry.class).values()) {
+        if (registry instanceof CompositeMeterRegistry) {
+          compositeMeterRegistries.add((CompositeMeterRegistry) registry);
         }
-        return bean;
       }
-    };
+      MicrometerSingletons.registerMeterRegistryContext(this, compositeMeterRegistries);
+    }
+
+    @Override
+    public void destroy() {
+      MicrometerSingletons.unregisterMeterRegistryContext(this);
+    }
   }
 }

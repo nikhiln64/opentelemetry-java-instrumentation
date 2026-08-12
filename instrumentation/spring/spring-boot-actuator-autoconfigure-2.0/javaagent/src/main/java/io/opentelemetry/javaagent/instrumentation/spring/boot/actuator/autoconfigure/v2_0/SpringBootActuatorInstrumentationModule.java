@@ -6,6 +6,7 @@
 package io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconfigure.v2_0;
 
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 import com.google.auto.service.AutoService;
@@ -41,6 +42,8 @@ public class SpringBootActuatorInstrumentationModule extends InstrumentationModu
     // can load it
     helperResourceBuilder.registerForAllClassLoaders(
         "io/opentelemetry/javaagent/instrumentation/spring/boot/actuator/autoconfigure/v2_0/OpenTelemetryMeterRegistryAutoConfiguration.class");
+    helperResourceBuilder.registerForAllClassLoaders(
+        "io/opentelemetry/javaagent/instrumentation/spring/boot/actuator/autoconfigure/v2_0/OpenTelemetryMeterRegistryAutoConfiguration$MeterRegistryVisibility.class");
   }
 
   @Override
@@ -51,7 +54,9 @@ public class SpringBootActuatorInstrumentationModule extends InstrumentationModu
 
   @Override
   public List<TypeInstrumentation> typeInstrumentations() {
-    return singletonList(new AutoConfigurationImportSelectorInstrumentation());
+    return asList(
+        new AutoConfigurationImportSelectorInstrumentation(),
+        new CompositeMeterRegistryInstrumentation());
   }
 
   @Override

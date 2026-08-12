@@ -5,6 +5,7 @@
 
 package io.opentelemetry.instrumentation.micrometer.v1_5.internal;
 
+import io.opentelemetry.instrumentation.micrometer.v1_5.OpenTelemetryMeterRegistry;
 import io.opentelemetry.instrumentation.micrometer.v1_5.OpenTelemetryMeterRegistryBuilder;
 import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
@@ -18,6 +19,10 @@ public final class Internal {
   @Nullable
   private static volatile BiConsumer<OpenTelemetryMeterRegistryBuilder, Boolean>
       setMetersHiddenFromSearch;
+
+  @Nullable
+  private static volatile BiConsumer<OpenTelemetryMeterRegistry, Boolean>
+      setRuntimeMetersHiddenFromSearch;
 
   /**
    * Hides the registered meters from the meter registry search APIs, i.e. {@code getMeters()},
@@ -42,9 +47,27 @@ public final class Internal {
     }
   }
 
+  /**
+   * Changes whether an existing registry hides its meters from the search APIs.
+   *
+   * <p>This is intended for integrations that can only determine whether another readable registry
+   * is available after the OpenTelemetry registry has been built.
+   */
+  public static void setMetersHiddenFromSearch(
+      OpenTelemetryMeterRegistry registry, boolean metersHiddenFromSearch) {
+    if (setRuntimeMetersHiddenFromSearch != null) {
+      setRuntimeMetersHiddenFromSearch.accept(registry, metersHiddenFromSearch);
+    }
+  }
+
   public static void internalSetMetersHiddenFromSearch(
       BiConsumer<OpenTelemetryMeterRegistryBuilder, Boolean> setMetersHiddenFromSearch) {
     Internal.setMetersHiddenFromSearch = setMetersHiddenFromSearch;
+  }
+
+  public static void internalSetRuntimeMetersHiddenFromSearch(
+      BiConsumer<OpenTelemetryMeterRegistry, Boolean> setMetersHiddenFromSearch) {
+    Internal.setRuntimeMetersHiddenFromSearch = setMetersHiddenFromSearch;
   }
 
   private Internal() {}

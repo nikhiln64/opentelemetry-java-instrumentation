@@ -55,4 +55,18 @@ class HiddenMetersTest {
     registry.forEachMeter(registry::remove);
     assertThat(registry.counter("test.counter")).isNotSameAs(counter);
   }
+
+  @Test
+  void meterVisibilityCanChangeAfterRegistryIsBuilt() {
+    OpenTelemetryMeterRegistry registry =
+        (OpenTelemetryMeterRegistry)
+            OpenTelemetryMeterRegistry.builder(OpenTelemetry.noop()).build();
+    registry.counter("test.counter").increment();
+
+    Internal.setMetersHiddenFromSearch(registry, true);
+    assertThat(registry.getMeters()).isEmpty();
+
+    Internal.setMetersHiddenFromSearch(registry, false);
+    assertThat(registry.find("test.counter").counter()).isNotNull();
+  }
 }
