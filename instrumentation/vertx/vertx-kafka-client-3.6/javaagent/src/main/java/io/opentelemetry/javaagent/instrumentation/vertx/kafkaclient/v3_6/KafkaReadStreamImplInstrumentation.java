@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.vertx.kafkaclient.v3_6;
 
+import static io.opentelemetry.javaagent.instrumentation.vertx.kafkaclient.v3_6.VertxKafkaSingletons.RECORD_HANDLER_REGISTERED;
 import static net.bytebuddy.matcher.ElementMatchers.isPrivate;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
@@ -14,6 +15,7 @@ import io.opentelemetry.javaagent.bootstrap.kafka.KafkaClientsConsumerProcessTra
 import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.vertx.core.Handler;
+import io.vertx.kafka.client.consumer.impl.KafkaReadStreamImpl;
 import javax.annotation.Nullable;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.asm.Advice.AssignReturned;
@@ -53,8 +55,10 @@ class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
     @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     @Nullable
     public static <K, V> Handler<ConsumerRecord<K, V>> onEnter(
+        @Advice.This KafkaReadStreamImpl<K, V> readStream,
         @Advice.Argument(0) @Nullable Handler<ConsumerRecord<K, V>> handler) {
 
+      RECORD_HANDLER_REGISTERED.set(readStream, handler != null);
       if (handler == null) {
         return null;
       }
@@ -69,12 +73,13 @@ class KafkaReadStreamImplInstrumentation implements TypeInstrumentation {
     @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     @Nullable
     public static <K, V> Handler<ConsumerRecords<K, V>> onEnter(
+        @Advice.This KafkaReadStreamImpl<K, V> readStream,
         @Advice.Argument(0) @Nullable Handler<ConsumerRecords<K, V>> handler) {
 
       if (handler == null) {
         return null;
       }
-      return new InstrumentedBatchRecordsHandler<>(handler);
+      return new InstrumentedBatchRecordsHandler<>(readStream, handler);
     }
   }
 
