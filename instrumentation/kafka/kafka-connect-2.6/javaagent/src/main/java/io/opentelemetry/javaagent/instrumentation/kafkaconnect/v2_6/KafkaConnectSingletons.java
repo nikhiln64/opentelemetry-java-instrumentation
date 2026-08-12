@@ -6,6 +6,7 @@
 package io.opentelemetry.javaagent.instrumentation.kafkaconnect.v2_6;
 
 import static io.opentelemetry.instrumentation.api.incubator.semconv.messaging.internal.MessagingExceptionEventExtractors.setMessagingProcessExceptionEventExtractor;
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.context.propagation.TextMapPropagator;
@@ -47,7 +48,11 @@ public class KafkaConnectSingletons {
                     PROCESS_OPERATION_NAME))
             .addSpanLinksExtractor(spanLinksExtractor)
             .addOperationMetrics(MessagingProcessMetrics.get());
-    if (!Boolean.TRUE.equals(ExperimentalConfig.get().messagingReceiveInstrumentationEnabled())) {
+    Boolean receiveTelemetryEnabled =
+        ExperimentalConfig.get().messagingReceiveInstrumentationEnabled();
+    if (receiveTelemetryEnabled != null
+        ? !receiveTelemetryEnabled
+        : !emitStableMessagingSemconv()) {
       builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
     }
     setMessagingProcessExceptionEventExtractor(builder);

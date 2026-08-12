@@ -155,9 +155,10 @@ abstract class KafkaConnectSinkTaskBaseTest implements TelemetryRetrieverProvide
     return kafka.getHost() + ":" + kafkaExposedPort;
   }
 
-  protected static boolean receiveTelemetryExplicitlyEnabled() {
-    return Boolean.getBoolean(
-        "otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
+  protected static boolean receiveTelemetryEnabled() {
+    String configured =
+        System.getProperty("otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
+    return configured != null ? Boolean.parseBoolean(configured) : emitStableMessagingSemconv();
   }
 
   @SafeVarargs

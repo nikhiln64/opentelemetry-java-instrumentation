@@ -256,7 +256,7 @@ class KafkaStreamsDefaultTest extends KafkaStreamsBaseTest {
           testLatestDeps() ? "test-application" : null,
           "0",
           1,
-          receiveTelemetryExplicitlyEnabled() ? null : 1L,
+          receiveTelemetryEnabled() ? null : 1L,
           null);
       return;
     }

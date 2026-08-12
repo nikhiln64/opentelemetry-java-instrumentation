@@ -84,8 +84,8 @@ tasks {
   }
 
   val testMessagingPreview = register<Test>("testMessagingPreview") {
-    testClassesDirs = sourceSets["testNoReceiveTelemetry"].output.classesDirs
-    classpath = sourceSets["testNoReceiveTelemetry"].runtimeClasspath
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     jvmArgs("-Dotel.semconv-stability.preview=messaging")
     systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
   }

@@ -91,7 +91,7 @@ public abstract class AbstractReactorKafkaTest {
   private static boolean receiveTelemetryEnabled() {
     String configured =
         System.getProperty("otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
-    return configured != null && Boolean.parseBoolean(configured);
+    return configured != null ? Boolean.parseBoolean(configured) : emitStableMessagingSemconv();
   }
 
   @BeforeAll

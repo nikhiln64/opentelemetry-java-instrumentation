@@ -197,7 +197,7 @@ public abstract class AbstractBatchRecordsVertxKafkaTest extends AbstractVertxKa
 
   private void assertBatchMetrics(long messageCount, String errorType) {
     String group = hasConsumerGroup() ? "test" : null;
-    if (receiveTelemetryExplicitlyEnabled()) {
+    if (receiveTelemetryEnabled()) {
       assertReceiveMetrics(
           testing(),
           "io.opentelemetry.kafka-clients-0.11",

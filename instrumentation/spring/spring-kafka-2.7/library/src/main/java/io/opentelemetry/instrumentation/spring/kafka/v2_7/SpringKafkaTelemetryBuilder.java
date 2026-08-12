@@ -5,6 +5,7 @@
 
 package io.opentelemetry.instrumentation.spring.kafka.v2_7;
 
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static java.util.Collections.emptyList;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -71,11 +72,10 @@ public final class SpringKafkaTelemetryBuilder {
     }
 
     return new SpringKafkaTelemetry(
-        factory.createConsumerProcessInstrumenter(
-            messagingReceiveInstrumentationEnabled == null
-                || !messagingReceiveInstrumentationEnabled),
+        factory.createConsumerProcessInstrumenter(),
         factory.createBatchProcessInstrumenter(
-            messagingReceiveInstrumentationEnabled == null
-                || !messagingReceiveInstrumentationEnabled));
+            messagingReceiveInstrumentationEnabled != null
+                ? !messagingReceiveInstrumentationEnabled
+                : !emitStableMessagingSemconv()));
   }
 }

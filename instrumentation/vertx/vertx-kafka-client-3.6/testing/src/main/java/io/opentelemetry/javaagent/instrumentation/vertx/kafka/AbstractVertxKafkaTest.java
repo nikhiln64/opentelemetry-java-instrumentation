@@ -181,9 +181,10 @@ public abstract class AbstractVertxKafkaTest {
   protected abstract void sendRecord(
       KafkaProducerRecord<String, String> record, Handler<AsyncResult<RecordMetadata>> handler);
 
-  protected static boolean receiveTelemetryExplicitlyEnabled() {
-    return Boolean.getBoolean(
-        "otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
+  protected static boolean receiveTelemetryEnabled() {
+    String configured =
+        System.getProperty("otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
+    return configured != null ? Boolean.parseBoolean(configured) : emitStableMessagingSemconv();
   }
 
   @SafeVarargs

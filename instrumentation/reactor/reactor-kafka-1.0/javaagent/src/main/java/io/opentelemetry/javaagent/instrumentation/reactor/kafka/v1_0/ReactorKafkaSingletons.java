@@ -31,8 +31,7 @@ final class ReactorKafkaSingletons {
     if (receiveTelemetryEnabled != null) {
       factory.setMessagingReceiveTelemetryEnabled(receiveTelemetryEnabled);
     }
-    return factory.createConsumerProcessInstrumenter(
-        receiveTelemetryEnabled == null || !receiveTelemetryEnabled);
+    return factory.createConsumerProcessInstrumenter();
   }
 
   public static Instrumenter<KafkaProcessRequest, Void> processInstrumenter() {

@@ -33,9 +33,7 @@ public class VertxKafkaSingletons {
       factory.setMessagingReceiveTelemetryEnabled(receiveTelemetryEnabled);
     }
     batchProcessInstrumenter = factory.createBatchProcessInstrumenter(false);
-    processInstrumenter =
-        factory.createConsumerProcessInstrumenter(
-            receiveTelemetryEnabled == null || !receiveTelemetryEnabled);
+    processInstrumenter = factory.createConsumerProcessInstrumenter();
   }
 
   public static Instrumenter<KafkaReceiveRequest, Void> batchProcessInstrumenter() {

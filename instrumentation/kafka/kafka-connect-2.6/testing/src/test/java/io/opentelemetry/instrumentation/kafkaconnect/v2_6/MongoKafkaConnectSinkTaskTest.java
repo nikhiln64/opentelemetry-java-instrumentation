@@ -153,9 +153,9 @@ class MongoKafkaConnectSinkTaskTest extends KafkaConnectSinkTaskBaseTest {
         null,
         null,
         1,
-        receiveTelemetryExplicitlyEnabled() ? null : 1L,
+        receiveTelemetryEnabled() ? null : 1L,
         null);
-    if (receiveTelemetryExplicitlyEnabled()) {
+    if (receiveTelemetryEnabled()) {
       assertReceiveMetrics(
           testing,
           "io.opentelemetry.kafka-clients-0.11",
