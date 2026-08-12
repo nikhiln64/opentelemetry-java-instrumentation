@@ -11,11 +11,15 @@ import jakarta.jms.Message;
 import jakarta.jms.MessageConsumer;
 import jakarta.jms.MessageListener;
 import jakarta.jms.Session;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import javax.annotation.Nullable;
 
 public final class JmsConsumerContext {
@@ -330,24 +334,17 @@ public final class JmsConsumerContext {
   }
 
   private static class WeakIdentitySet<T> {
-    private final List<WeakReference<T>> values = new ArrayList<>();
+    private final ReferenceQueue<T> referenceQueue = new ReferenceQueue<>();
+    private final Set<IdentityWeakReference<T>> values = new HashSet<>();
 
     void add(T value) {
-      Iterator<WeakReference<T>> iterator = values.iterator();
-      while (iterator.hasNext()) {
-        T registeredValue = iterator.next().get();
-        if (registeredValue == null) {
-          iterator.remove();
-        } else if (registeredValue == value) {
-          return;
-        }
-      }
-      values.add(new WeakReference<>(value));
+      expungeStaleValues();
+      values.add(new IdentityWeakReference<>(value, referenceQueue));
     }
 
     List<T> drain() {
       List<T> liveValues = new ArrayList<>();
-      for (WeakReference<T> reference : values) {
+      for (IdentityWeakReference<T> reference : values) {
         T value = reference.get();
         if (value != null) {
           liveValues.add(value);
@@ -355,6 +352,39 @@ public final class JmsConsumerContext {
       }
       values.clear();
       return liveValues;
+    }
+
+    private void expungeStaleValues() {
+      Reference<? extends T> reference;
+      while ((reference = referenceQueue.poll()) != null) {
+        values.remove(reference);
+      }
+    }
+  }
+
+  private static class IdentityWeakReference<T> extends WeakReference<T> {
+    private final int hashCode;
+
+    private IdentityWeakReference(T value, ReferenceQueue<T> referenceQueue) {
+      super(value, referenceQueue);
+      hashCode = System.identityHashCode(value);
+    }
+
+    @Override
+    public int hashCode() {
+      return hashCode;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (this == other) {
+        return true;
+      }
+      if (!(other instanceof IdentityWeakReference)) {
+        return false;
+      }
+      Object value = get();
+      return value != null && value == ((IdentityWeakReference<?>) other).get();
     }
   }
 }
