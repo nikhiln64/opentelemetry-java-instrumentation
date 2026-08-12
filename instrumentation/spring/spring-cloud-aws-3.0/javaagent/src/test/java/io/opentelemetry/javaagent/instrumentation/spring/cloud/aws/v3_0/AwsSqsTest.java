@@ -11,6 +11,7 @@ import static io.opentelemetry.instrumentation.testing.util.TelemetryDataUtil.or
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
+import static io.opentelemetry.semconv.ErrorAttributes.ERROR_TYPE;
 import static io.opentelemetry.semconv.HttpAttributes.HTTP_REQUEST_METHOD;
 import static io.opentelemetry.semconv.HttpAttributes.HTTP_RESPONSE_STATUS_CODE;
 import static io.opentelemetry.semconv.HttpAttributes.HttpRequestMethodValues.POST;
@@ -31,7 +32,6 @@ import static io.opentelemetry.semconv.incubating.RpcIncubatingAttributes.RPC_ME
 import static io.opentelemetry.semconv.incubating.RpcIncubatingAttributes.RPC_SERVICE;
 import static io.opentelemetry.semconv.incubating.RpcIncubatingAttributes.RPC_SYSTEM;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -274,6 +274,78 @@ class AwsSqsTest {
                     assertThat(metric)
                         .hasLongSumSatisfying(
                             sum -> sum.hasPointsSatisfying(point -> point.hasValue(1)))));
+  }
+
+  @Test
+  void nestedDirectReceiveDoesNotInheritListenerConsumedMessageOwnership() throws Exception {
+    assumeTrue(emitStableMessagingSemconv());
+
+    CreateQueueResponse createQueueResponse =
+        sqsAsyncClient.createQueue(request -> request.queueName("nested-queue")).get(10, SECONDS);
+    String nestedQueueUrl = createQueueResponse.queueUrl();
+    sqsAsyncClient
+        .sendMessage(request -> request.queueUrl(nestedQueueUrl).messageBody("nested"))
+        .get(10, SECONDS);
+    testing.clearData();
+
+    CompletableFuture<ReceiveMessageResponse> nestedResponseFuture = new CompletableFuture<>();
+    AwsSqsTestApplication.messageHandler =
+        string -> {
+          ReceiveMessageResponse response =
+              sqsAsyncClient
+                  .receiveMessage(
+                      request ->
+                          request
+                              .queueUrl(nestedQueueUrl)
+                              .maxNumberOfMessages(1)
+                              .waitTimeSeconds(1))
+                  .join();
+          response.messages().forEach(message -> {});
+          nestedResponseFuture.complete(response);
+        };
+
+    sqsTemplate.send("test-queue", "listener");
+
+    ReceiveMessageResponse nestedResponse = nestedResponseFuture.get(10, SECONDS);
+    assertThat(nestedResponse.messages()).hasSize(1);
+
+    String receiveTelemetry = System.getProperty(RECEIVE_TELEMETRY_ENABLED);
+    String listenerOperation = "true".equals(receiveTelemetry) ? "receive" : "process";
+    String nestedOperation = "false".equals(receiveTelemetry) ? "process" : "receive";
+    testing.waitAndAssertMetrics(
+        "io.opentelemetry.aws-sdk-2.2",
+        "messaging.client.consumed.messages",
+        metrics ->
+            metrics.satisfiesExactly(
+                metric ->
+                    assertThat(metric)
+                        .hasLongSumSatisfying(
+                            sum ->
+                                sum.hasPointsSatisfying(
+                                    point ->
+                                        point
+                                            .hasValue(1)
+                                            .hasAttributesSatisfyingExactly(
+                                                equalTo(
+                                                    MESSAGING_OPERATION_NAME, listenerOperation),
+                                                equalTo(MESSAGING_SYSTEM, AWS_SQS),
+                                                equalTo(ERROR_TYPE, null),
+                                                equalTo(MESSAGING_DESTINATION_NAME, "test-queue"),
+                                                equalTo(SERVER_ADDRESS, "localhost"),
+                                                equalTo(
+                                                    SERVER_PORT, AwsSqsTestApplication.sqsPort)),
+                                    point ->
+                                        point
+                                            .hasValue(1)
+                                            .hasAttributesSatisfyingExactly(
+                                                equalTo(MESSAGING_OPERATION_NAME, nestedOperation),
+                                                equalTo(MESSAGING_SYSTEM, AWS_SQS),
+                                                equalTo(ERROR_TYPE, null),
+                                                equalTo(MESSAGING_DESTINATION_NAME, "nested-queue"),
+                                                equalTo(SERVER_ADDRESS, "localhost"),
+                                                equalTo(
+                                                    SERVER_PORT,
+                                                    AwsSqsTestApplication.sqsPort))))));
   }
 
   @Test

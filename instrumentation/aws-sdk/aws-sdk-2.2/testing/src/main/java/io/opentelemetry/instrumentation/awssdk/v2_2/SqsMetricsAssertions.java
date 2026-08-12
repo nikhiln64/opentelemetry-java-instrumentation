@@ -79,7 +79,7 @@ final class SqsMetricsAssertions {
     }
 
     assertClientOperationDuration(
-        testing, serverPort, receiveOperationCount, "receive", "testSdkSqs", null);
+        testing, serverPort, receiveOperationCount, "receive", "testSdkSqs", null, 1);
     assertMessageCounter(
         testing, "messaging.client.consumed.messages", "receive", messageCount, true, serverPort);
     assertProcessDuration(testing, serverPort, messageCount);
@@ -93,7 +93,7 @@ final class SqsMetricsAssertions {
       return;
     }
 
-    assertClientOperationDuration(testing, serverPort, 1, "receive", destination, errorType);
+    assertClientOperationDuration(testing, serverPort, 1, "receive", destination, errorType, 0);
     assertNoDeprecatedMessagingMetrics(testing);
   }
 
@@ -121,7 +121,8 @@ final class SqsMetricsAssertions {
       long operationCount,
       String operationName,
       String destination,
-      String errorType) {
+      String errorType,
+      double minimumDurationSeconds) {
     testing.waitAndAssertMetrics(
         INSTRUMENTATION_NAME,
         "messaging.client.operation.duration",
@@ -141,7 +142,7 @@ final class SqsMetricsAssertions {
                                                 data ->
                                                     assertThat(data.getCount())
                                                         .isEqualTo(operationCount))
-                                            .hasSumGreaterThan(0)
+                                            .hasSumGreaterThan(minimumDurationSeconds)
                                             .hasBucketBoundaries(DURATION_BUCKETS)
                                             .hasAttributesSatisfyingExactly(
                                                 equalTo(MESSAGING_OPERATION_NAME, operationName),
