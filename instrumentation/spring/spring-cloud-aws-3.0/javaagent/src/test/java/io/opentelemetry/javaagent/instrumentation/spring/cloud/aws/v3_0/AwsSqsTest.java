@@ -8,6 +8,7 @@ package io.opentelemetry.javaagent.instrumentation.spring.cloud.aws.v3_0;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitOldMessagingSemconv;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static io.opentelemetry.instrumentation.testing.util.TelemetryDataUtil.orderByRootSpanKind;
+import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
 import static io.opentelemetry.semconv.HttpAttributes.HTTP_REQUEST_METHOD;
@@ -224,6 +225,7 @@ class AwsSqsTest {
                                     + AwsSqsTestApplication.sqsPort
                                     + "/000000000000/test-queue"),
                             satisfies(AWS_REQUEST_ID, val -> val.isInstanceOf(String.class)))));
+    assertConsumedMessages();
   }
 
   @Test
@@ -256,6 +258,22 @@ class AwsSqsTest {
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span -> assertReceiveSpan(span, "test-queue", sendSpan.get())));
+    assertConsumedMessages();
+  }
+
+  private static void assertConsumedMessages() {
+    if (!emitStableMessagingSemconv()) {
+      return;
+    }
+    testing.waitAndAssertMetrics(
+        "io.opentelemetry.aws-sdk-2.2",
+        "messaging.client.consumed.messages",
+        metrics ->
+            metrics.satisfiesExactly(
+                metric ->
+                    assertThat(metric)
+                        .hasLongSumSatisfying(
+                            sum -> sum.hasPointsSatisfying(point -> point.hasValue(1)))));
   }
 
   @Test

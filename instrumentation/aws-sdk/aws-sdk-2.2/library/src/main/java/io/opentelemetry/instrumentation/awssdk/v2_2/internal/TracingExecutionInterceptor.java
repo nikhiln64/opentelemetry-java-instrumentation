@@ -61,7 +61,7 @@ public final class TracingExecutionInterceptor implements ExecutionInterceptor {
           new ExecutionAttribute<>(TracingExecutionInterceptor.class.getName() + ".ParentContext");
   private static final ExecutionAttribute<Scope> SCOPE_ATTRIBUTE =
       new ExecutionAttribute<>(TracingExecutionInterceptor.class.getName() + ".Scope");
-  private static final ExecutionAttribute<Boolean> SQS_INTERNAL_LISTENER_POLL_ATTRIBUTE =
+  static final ExecutionAttribute<Boolean> SQS_INTERNAL_LISTENER_POLL_ATTRIBUTE =
       new ExecutionAttribute<>(
           TracingExecutionInterceptor.class.getName() + ".SqsInternalListenerPoll");
   private static final ExecutionAttribute<AwsSdkRequest> AWS_SDK_REQUEST_ATTRIBUTE =

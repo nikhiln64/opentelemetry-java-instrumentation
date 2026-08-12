@@ -109,6 +109,10 @@ public final class SqsImpl {
     copy.putAttribute(
         SdkExecutionAttribute.OPERATION_NAME,
         executionAttributes.getAttribute(SdkExecutionAttribute.OPERATION_NAME));
+    copy.putAttribute(
+        TracingExecutionInterceptor.SQS_INTERNAL_LISTENER_POLL_ATTRIBUTE,
+        executionAttributes.getAttribute(
+            TracingExecutionInterceptor.SQS_INTERNAL_LISTENER_POLL_ATTRIBUTE));
 
     TracingList tracingList =
         TracingList.wrap(

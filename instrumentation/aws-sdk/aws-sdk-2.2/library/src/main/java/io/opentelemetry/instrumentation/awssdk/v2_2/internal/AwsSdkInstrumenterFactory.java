@@ -16,11 +16,14 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
 import io.opentelemetry.api.logs.Logger;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.ContextKey;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.instrumentation.api.incubator.semconv.db.DbClientMetrics;
 import io.opentelemetry.instrumentation.api.incubator.semconv.genai.GenAiAttributesExtractor;
@@ -39,8 +42,11 @@ import io.opentelemetry.instrumentation.api.incubator.semconv.rpc.RpcClientAttri
 import io.opentelemetry.instrumentation.api.instrumenter.AttributesExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.instrumentation.api.instrumenter.InstrumenterBuilder;
+import io.opentelemetry.instrumentation.api.instrumenter.OperationListener;
+import io.opentelemetry.instrumentation.api.instrumenter.OperationMetrics;
 import io.opentelemetry.instrumentation.api.instrumenter.SpanKindExtractor;
 import io.opentelemetry.instrumentation.api.instrumenter.SpanNameExtractor;
+import io.opentelemetry.instrumentation.api.internal.Experimental;
 import io.opentelemetry.instrumentation.api.semconv.http.HttpClientAttributesExtractor;
 import io.opentelemetry.instrumentation.api.semconv.network.ServerAttributesExtractor;
 import java.util.ArrayList;
@@ -61,6 +67,10 @@ public final class AwsSdkInstrumenterFactory {
   private static final String SEND_OPERATION_NAME = "send";
   private static final String RECEIVE_OPERATION_NAME = "receive";
   private static final String PROCESS_OPERATION_NAME = "process";
+  private static final AttributeKey<Boolean> RECORD_CONSUMED_MESSAGES =
+      AttributeKey.booleanKey("sqs.record.consumed.messages");
+  private static final ContextKey<Boolean> RECORD_CONSUMED_MESSAGES_STATE =
+      ContextKey.named("sqs-record-consumed-messages-state");
 
   private static final AttributesExtractor<ExecutionAttributes, Response> rpcAttributesExtractor =
       RpcClientAttributesExtractor.create(new AwsSdkRpcAttributesGetter());
@@ -218,8 +228,30 @@ public final class AwsSdkInstrumenterFactory {
             .addAttributesExtractor(
                 messagingAttributesExtractor(getter, operationType, PROCESS_OPERATION_NAME))
             .addOperationMetrics(MessagingProcessMetrics.get());
-    if (emitStableMessagingSemconv() && !receiveInstrumentationEnabled()) {
-      builder.addOperationMetrics(MessagingConsumerMetrics.getConsumedMessages());
+    if (emitStableMessagingSemconv()) {
+      Experimental.addOperationListenerAttributesExtractor(
+          builder,
+          new AttributesExtractor<SqsProcessRequest, Response>() {
+            @Override
+            public void onStart(
+                AttributesBuilder attributes, Context context, SqsProcessRequest request) {
+              boolean recordConsumedMessages =
+                  !receiveInstrumentationEnabled()
+                      || (TracingExecutionInterceptor.isSqsInternalListenerPoll(
+                              request.getRequest())
+                          && !Boolean.TRUE.equals(messagingReceiveInstrumentationEnabled));
+              attributes.put(RECORD_CONSUMED_MESSAGES, recordConsumedMessages);
+            }
+
+            @Override
+            public void onEnd(
+                AttributesBuilder attributes,
+                Context context,
+                SqsProcessRequest request,
+                @Nullable Response response,
+                @Nullable Throwable error) {}
+          });
+      builder.addOperationMetrics(conditionalConsumedMessagesMetrics());
     }
     setMessagingProcessExceptionEventExtractor(builder);
 
@@ -250,6 +282,30 @@ public final class AwsSdkInstrumenterFactory {
                       useXrayPropagator)));
     }
     return builder.buildInstrumenter(SpanKindExtractor.alwaysConsumer());
+  }
+
+  private static OperationMetrics conditionalConsumedMessagesMetrics() {
+    return meter -> {
+      OperationListener delegate = MessagingConsumerMetrics.getConsumedMessages().create(meter);
+      return new OperationListener() {
+        @Override
+        public Context onStart(Context context, Attributes startAttributes, long startNanos) {
+          if (!Boolean.TRUE.equals(startAttributes.get(RECORD_CONSUMED_MESSAGES))) {
+            return context;
+          }
+          return delegate
+              .onStart(context, startAttributes, startNanos)
+              .with(RECORD_CONSUMED_MESSAGES_STATE, true);
+        }
+
+        @Override
+        public void onEnd(Context context, Attributes endAttributes, long endNanos) {
+          if (Boolean.TRUE.equals(context.get(RECORD_CONSUMED_MESSAGES_STATE))) {
+            delegate.onEnd(context, endAttributes, endNanos);
+          }
+        }
+      };
+    };
   }
 
   private boolean receiveInstrumentationEnabled() {
