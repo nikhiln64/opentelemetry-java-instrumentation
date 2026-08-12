@@ -8,6 +8,7 @@ package io.opentelemetry.instrumentation.awssdk.v2_2.internal;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static io.opentelemetry.instrumentation.awssdk.v2_2.internal.TracingExecutionInterceptor.SDK_HTTP_REQUEST_ATTRIBUTE;
 import static io.opentelemetry.instrumentation.awssdk.v2_2.internal.TracingExecutionInterceptor.SDK_REQUEST_ATTRIBUTE;
+import static java.util.Collections.emptyList;
 
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapPropagator;
@@ -19,7 +20,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -145,8 +145,7 @@ public final class SqsImpl {
         TracingExecutionInterceptor.getParentContext(executionAttributes);
     Instrumenter<SqsReceiveRequest, Response> consumerReceiveInstrumenter =
         config.getConsumerReceiveInstrumenter();
-    SqsReceiveRequest receiveRequest =
-        SqsReceiveRequest.create(executionAttributes, Collections.<SqsMessage>emptyList());
+    SqsReceiveRequest receiveRequest = SqsReceiveRequest.create(executionAttributes, emptyList());
     if (consumerReceiveInstrumenter.shouldStart(parentContext, receiveRequest)) {
       InstrumenterUtil.startAndEnd(
           consumerReceiveInstrumenter,

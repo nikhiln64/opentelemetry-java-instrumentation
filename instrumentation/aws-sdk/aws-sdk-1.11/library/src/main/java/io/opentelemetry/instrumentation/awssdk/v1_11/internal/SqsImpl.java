@@ -6,6 +6,7 @@
 package io.opentelemetry.instrumentation.awssdk.v1_11.internal;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static java.util.Collections.emptyList;
 
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.Request;
@@ -22,7 +23,6 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import io.opentelemetry.instrumentation.api.internal.InstrumenterUtil;
 import io.opentelemetry.instrumentation.api.internal.Timer;
 import java.lang.reflect.Field;
-import java.util.Collections;
 import java.util.Map;
 import javax.annotation.Nullable;
 
@@ -63,8 +63,7 @@ public final class SqsImpl {
     }
     Instrumenter<SqsReceiveRequest, Response<?>> consumerReceiveInstrumenter =
         requestHandler.getConsumerReceiveInstrumenter();
-    SqsReceiveRequest receiveRequest =
-        SqsReceiveRequest.create(request, Collections.<SqsMessage>emptyList());
+    SqsReceiveRequest receiveRequest = SqsReceiveRequest.create(request, emptyList());
     if (consumerReceiveInstrumenter.shouldStart(parentContext, receiveRequest)) {
       InstrumenterUtil.startAndEnd(
           consumerReceiveInstrumenter,
