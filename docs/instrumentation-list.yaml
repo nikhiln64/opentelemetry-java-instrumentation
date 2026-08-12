@@ -2023,7 +2023,7 @@ definitions:
         type: STRING
       - name: server.port
         type: LONG
-    messaging.client.operation.duration-df200871:
+    messaging.client.operation.duration-dab7c60a:
       name: messaging.client.operation.duration
       description: Duration of messaging operation initiated by a producer or consumer
         client.
@@ -2032,8 +2032,6 @@ definitions:
       unit: s
       attributes:
       - name: messaging.destination.name
-        type: STRING
-      - name: messaging.destination.subscription.name
         type: STRING
       - name: messaging.operation.name
         type: STRING
@@ -11868,7 +11866,7 @@ libraries:
   - when: otel.semconv-stability.preview=messaging
     metric_refs:
     - messaging.client.consumed.messages-5c21579f
-    - messaging.client.operation.duration-df200871
+    - messaging.client.operation.duration-dab7c60a
     - messaging.client.sent.messages-38a90199
     - messaging.process.duration-9ee3dd0a
     spans:
@@ -13239,6 +13237,7 @@ libraries:
     - jvm.cpu.count-ae176c2b
     - jvm.cpu.recent_utilization-6056df51
     - jvm.cpu.time-e00d5c75
+    - jvm.gc.duration-e20d0032
     - jvm.memory.committed-75750f2f
     - jvm.memory.limit-13513f5f
     - jvm.memory.used-0d769189
