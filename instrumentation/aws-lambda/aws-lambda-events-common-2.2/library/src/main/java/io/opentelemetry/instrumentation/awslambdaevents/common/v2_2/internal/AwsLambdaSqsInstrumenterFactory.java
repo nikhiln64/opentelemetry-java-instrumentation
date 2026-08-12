@@ -61,8 +61,12 @@ public final class AwsLambdaSqsInstrumenterFactory {
                 MessagingSpanNameExtractor.create(
                     getter, MessagingOperationType.PROCESS, PROCESS_OPERATION_NAME))
             .addAttributesExtractor(
-                MessagingAttributesExtractor.create(
-                    getter, MessagingOperationType.PROCESS, PROCESS_OPERATION_NAME))
+                emitStableMessagingSemconv()
+                    ? MessagingAttributesExtractor.create(
+                        getter, MessagingOperationType.PROCESS, PROCESS_OPERATION_NAME)
+                    : new SpanKeyOmittingAttributesExtractor<>(
+                        MessagingAttributesExtractor.create(
+                            getter, MessagingOperationType.PROCESS, PROCESS_OPERATION_NAME)))
             .addOperationMetrics(MessagingProcessMetrics.get());
     setMessagingProcessExceptionEventExtractor(builder);
     return MessagingProcessInstrumenterFactory.create(
