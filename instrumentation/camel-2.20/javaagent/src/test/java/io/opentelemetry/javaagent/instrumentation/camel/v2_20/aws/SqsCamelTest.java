@@ -6,6 +6,8 @@
 package io.opentelemetry.javaagent.instrumentation.camel.v2_20.aws;
 
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
+import static io.opentelemetry.javaagent.instrumentation.camel.v2_20.CamelMessagingMetricsAssertions.assertNoCamelMessagingMetrics;
+import static io.opentelemetry.javaagent.instrumentation.camel.v2_20.CamelMessagingMetricsAssertions.assertProcessMetrics;
 
 import com.google.common.collect.ImmutableMap;
 import io.opentelemetry.api.trace.SpanContext;
@@ -77,6 +79,7 @@ class SqsCamelTest {
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span -> AwsSpanAssertions.sqs(span, "SQS.DeleteMessage", queueUrl).hasNoParent()));
+    assertProcessMetrics(testing, "aws_sqs", queueName);
     camelApp.stop();
   }
 
@@ -116,6 +119,7 @@ class SqsCamelTest {
         trace ->
             trace.hasSpansSatisfyingExactly(
                 span -> AwsSpanAssertions.sqs(span, "SQS.DeleteMessage", queueUrl).hasNoParent()));
+    assertProcessMetrics(testing, "aws_sqs", queueName);
     camelApp.stop();
   }
 
@@ -156,6 +160,7 @@ class SqsCamelTest {
                             queueName,
                             SpanKind.CONSUMER)
                         .hasParent(trace.getSpan(2))));
+    assertNoCamelMessagingMetrics(testing);
     camelApp.stop();
   }
 

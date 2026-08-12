@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.camel.v2_20.aws;
 
+import static io.opentelemetry.javaagent.instrumentation.camel.v2_20.CamelMessagingMetricsAssertions.assertNoCamelMessagingMetrics;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -99,6 +100,7 @@ class SnsProducerCamelTest {
     assertThat(publishRequest.get())
         .contains("Name=traceparent")
         .contains("-" + camelSend.get().getSpanId() + "-");
+    assertNoCamelMessagingMetrics(testing);
     camelApp.stop();
   }
 
