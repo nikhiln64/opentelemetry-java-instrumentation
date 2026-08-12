@@ -102,6 +102,17 @@ tasks {
       )
     }
 
+  val testMessagingPreviewReceiveTelemetryUnset =
+    register<Test>("testMessagingPreviewReceiveTelemetryUnset") {
+      testClassesDirs = sourceSets.test.get().output.classesDirs
+      classpath = sourceSets.test.get().runtimeClasspath
+      filter {
+        includeTestsMatching("SpringListenerTest")
+      }
+      jvmArgs("-Dotel.semconv-stability.preview=messaging")
+      systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
+    }
+
   val testBothSemconv = register<Test>("testBothSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -131,6 +142,7 @@ tasks {
       testing.suites,
       testMessagingPreview,
       testMessagingPreviewReceiveSpansDisabled,
+      testMessagingPreviewReceiveTelemetryUnset,
       testBothSemconv,
       testV3Preview,
       testV3PreviewReceiveSpansDisabled,

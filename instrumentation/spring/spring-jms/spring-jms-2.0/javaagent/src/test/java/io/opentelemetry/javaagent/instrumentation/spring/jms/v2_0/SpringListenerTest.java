@@ -146,6 +146,29 @@ class SpringListenerTest extends AbstractJmsTest {
 
     template.convertAndSend("SpringListenerJms2", "a message");
 
+    if (!receiveTelemetryEnabled()) {
+      testing.waitAndAssertTraces(
+          trace ->
+              trace.hasSpansSatisfyingExactly(
+                  span -> assertProducerSpan(span, "SpringListenerJms2", false),
+                  span ->
+                      assertConsumerSpan(
+                          span,
+                          trace.getSpan(0),
+                          trace.getSpan(0),
+                          "SpringListenerJms2",
+                          "process",
+                          false,
+                          null)));
+      assertMetrics(
+          testing,
+          false,
+          config == PlainListenerConfig.class
+              ? "io.opentelemetry.jms-1.1"
+              : "io.opentelemetry.spring-jms-2.0");
+      return;
+    }
+
     AtomicReference<SpanData> producerSpan = new AtomicReference<>();
     if (emitStableMessagingSemconv()) {
       testing.waitAndAssertSortedTraces(
@@ -332,5 +355,11 @@ class SpringListenerTest extends AbstractJmsTest {
       factory.setTaskExecutor(ambientParentTaskExecutor());
       return factory;
     }
+  }
+
+  private static boolean receiveTelemetryEnabled() {
+    return Boolean.parseBoolean(
+        System.getProperty(
+            "otel.instrumentation.messaging.experimental.receive-telemetry.enabled"));
   }
 }

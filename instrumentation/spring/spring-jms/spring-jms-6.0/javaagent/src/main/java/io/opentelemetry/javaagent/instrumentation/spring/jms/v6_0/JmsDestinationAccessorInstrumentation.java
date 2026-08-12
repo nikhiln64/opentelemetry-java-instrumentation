@@ -45,7 +45,8 @@ class JmsDestinationAccessorInstrumentation implements TypeInstrumentation {
     @Nullable
     public static Scope onEnter() {
       Context currentContext = Java8BytecodeBridge.currentContext();
-      if (RECEIVE_TELEMETRY_ENABLED || !JmsReceiveContextHolder.isInitialized(currentContext)) {
+      if (Boolean.TRUE.equals(RECEIVE_TELEMETRY_ENABLED)
+          || !JmsReceiveContextHolder.isInitialized(currentContext)) {
         return null;
       }
       // suppress receive span creation in jms instrumentation

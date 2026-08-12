@@ -157,6 +157,7 @@ class SpringJmsListenerTest extends AbstractSpringJmsListenerTest {
                               operationType("process"),
                               satisfies(MESSAGING_MESSAGE_ID, AbstractStringAssert::isNotBlank)),
                   span -> span.hasName("consumer").hasParent(trace.getSpan(2))));
+      assertMetrics(false);
       return;
     }
 
@@ -496,9 +497,9 @@ class SpringJmsListenerTest extends AbstractSpringJmsListenerTest {
   }
 
   private static boolean receiveTelemetryEnabled() {
-    String configured =
-        System.getProperty("otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
-    return configured != null ? Boolean.parseBoolean(configured) : emitStableMessagingSemconv();
+    return Boolean.parseBoolean(
+        System.getProperty(
+            "otel.instrumentation.messaging.experimental.receive-telemetry.enabled"));
   }
 
   @TestConfiguration
