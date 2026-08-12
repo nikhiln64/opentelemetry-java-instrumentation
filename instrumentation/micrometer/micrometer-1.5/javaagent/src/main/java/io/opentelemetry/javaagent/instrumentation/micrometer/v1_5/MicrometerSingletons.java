@@ -13,8 +13,11 @@ import io.opentelemetry.instrumentation.micrometer.v1_5.OpenTelemetryMeterRegist
 import io.opentelemetry.instrumentation.micrometer.v1_5.OpenTelemetryMeterRegistryBuilder;
 import io.opentelemetry.instrumentation.micrometer.v1_5.internal.Experimental;
 import io.opentelemetry.instrumentation.micrometer.v1_5.internal.OpenTelemetryInstrument;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import javax.annotation.Nullable;
 
 public class MicrometerSingletons {
@@ -35,6 +38,23 @@ public class MicrometerSingletons {
 
   public static MeterRegistry meterRegistry() {
     return meterRegistry;
+  }
+
+  // called from CompositeMeterRegistryInstrumentation
+  // the actuator metrics endpoint reads meters from the first registry that has a match, so the
+  // otel registry is sorted last since it does not support reading metric values
+  public static Set<MeterRegistry> sortOtelMeterRegistryLast(Set<MeterRegistry> registries) {
+    if (registries.size() < 2 || !registries.contains(meterRegistry)) {
+      return registries;
+    }
+    Set<MeterRegistry> sorted = new LinkedHashSet<>();
+    for (MeterRegistry registry : registries) {
+      if (registry != meterRegistry) {
+        sorted.add(registry);
+      }
+    }
+    sorted.add(meterRegistry);
+    return Collections.unmodifiableSet(sorted);
   }
 
   // called from code generated in AbstractCompositeMeterInstrumentation

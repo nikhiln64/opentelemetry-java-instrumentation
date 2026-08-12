@@ -9,14 +9,17 @@ import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.assertThat;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconfigure.v2_0.SpringApp.TestBean;
 import java.util.ArrayList;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.boot.SpringApplication;
@@ -55,13 +58,45 @@ class ActuatorTest {
                                             equalTo(stringKey("tag"), "value")))));
 
     MeterRegistry meterRegistry = context.getBean(MeterRegistry.class);
+    // the composite registry bean must be the one spring created, not a wrapper; beans that were
+    // injected with the original composite would not see the wrapper, and its registry list would
+    // be frozen at the time it was created
     assertThat(meterRegistry).isInstanceOf(CompositeMeterRegistry.class);
+    assertThat(meterRegistry.getClass().getName()).doesNotStartWith("io.opentelemetry.");
 
-    Set<MeterRegistry> registries = ((CompositeMeterRegistry) meterRegistry).getRegistries();
+    CompositeMeterRegistry composite = (CompositeMeterRegistry) meterRegistry;
+    assertOtelMeterRegistryIsLast(composite);
+
+    // the actuator metrics endpoint reads from the first registry that has a matching meter, so
+    // that registry has to be able to report the value
+    Counter counter = findFirstMatchingCounter(composite);
+    assertThat(counter).isNotNull();
+    assertThat(counter.count()).isEqualTo(1);
+
+    // registries added after startup are ordered on read, not captured at startup
+    int registryCount = composite.getRegistries().size();
+    composite.add(new SimpleMeterRegistry());
+    assertThat(composite.getRegistries()).hasSize(registryCount + 1);
+    assertOtelMeterRegistryIsLast(composite);
+  }
+
+  private static void assertOtelMeterRegistryIsLast(CompositeMeterRegistry composite) {
+    Set<MeterRegistry> registries = composite.getRegistries();
     ArrayList<MeterRegistry> list = new ArrayList<>(registries);
 
     assertThat(list)
         .extracting(registry -> registry.getClass().getSimpleName())
         .endsWith("OpenTelemetryMeterRegistry");
+  }
+
+  @Nullable
+  private static Counter findFirstMatchingCounter(CompositeMeterRegistry composite) {
+    for (MeterRegistry registry : composite.getRegistries()) {
+      Counter counter = registry.find("test-counter").counter();
+      if (counter != null) {
+        return counter;
+      }
+    }
+    return null;
   }
 }
