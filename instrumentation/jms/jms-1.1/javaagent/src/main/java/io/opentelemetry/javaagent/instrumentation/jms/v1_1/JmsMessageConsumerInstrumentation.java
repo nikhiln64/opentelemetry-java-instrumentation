@@ -64,12 +64,12 @@ class JmsMessageConsumerInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class ConsumerAdvice {
 
-    @Advice.OnMethodEnter(suppress = Throwable.class)
+    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
     public static Timer onEnter() {
       return Timer.start();
     }
 
-    @Advice.OnMethodExit(suppress = Throwable.class)
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static void stopSpan(
         @Advice.This MessageConsumer consumer,
         @Advice.Enter Timer timer,
