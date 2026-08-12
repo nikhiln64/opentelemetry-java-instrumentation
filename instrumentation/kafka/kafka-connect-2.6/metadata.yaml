@@ -3,3 +3,11 @@ display_name: Apache Kafka Connect
 library_link: https://kafka.apache.org/documentation/#connect
 semantic_conventions:
   - MESSAGING_SPANS
+configurations:
+  - name: otel.instrumentation.messaging.experimental.receive-telemetry.enabled
+    declarative_name: java.common.messaging.receive_telemetry/development.enabled
+    description: >
+      Controls experimental receive spans for pull-based messaging operations. When unset, receive
+      spans are enabled with stable messaging semantic conventions or v3-preview, and disabled otherwise.
+    type: boolean
+    default_is_conditional: true
