@@ -5,8 +5,6 @@
 
 package io.opentelemetry.javaagent.instrumentation.spring.kafka.v2_7;
 
-import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
-
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.instrumentation.api.incubator.config.internal.DeclarativeConfigUtil;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
@@ -36,11 +34,7 @@ public class SpringKafkaSingletons {
     if (receiveTelemetryEnabled != null) {
       factory.setMessagingReceiveTelemetryEnabled(receiveTelemetryEnabled);
     }
-    batchProcessInstrumenter =
-        factory.createBatchProcessInstrumenter(
-            receiveTelemetryEnabled != null
-                ? !receiveTelemetryEnabled
-                : !emitStableMessagingSemconv());
+    batchProcessInstrumenter = factory.createBatchProcessInstrumenter();
   }
 
   private static SpringKafkaTelemetry createTelemetry() {

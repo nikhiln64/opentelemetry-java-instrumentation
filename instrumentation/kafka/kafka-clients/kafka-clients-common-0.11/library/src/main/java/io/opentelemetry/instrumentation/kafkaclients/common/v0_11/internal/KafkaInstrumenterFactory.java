@@ -150,11 +150,6 @@ public final class KafkaInstrumenterFactory {
   }
 
   public Instrumenter<KafkaProcessRequest, Void> createConsumerProcessInstrumenter(
-      boolean recordConsumedMessages) {
-    return createConsumerProcessInstrumenter(emptyList(), recordConsumedMessages);
-  }
-
-  public Instrumenter<KafkaProcessRequest, Void> createConsumerProcessInstrumenter(
       Iterable<AttributesExtractor<KafkaProcessRequest, Void>> extractors) {
     return createConsumerProcessInstrumenter(extractors, !receiveInstrumentationEnabled());
   }
@@ -196,6 +191,10 @@ public final class KafkaInstrumenterFactory {
     return messagingReceiveInstrumentationConfigured
         ? messagingReceiveInstrumentationEnabled
         : emitStableMessagingSemconv();
+  }
+
+  public Instrumenter<KafkaReceiveRequest, Void> createBatchProcessInstrumenter() {
+    return createBatchProcessInstrumenter(!receiveInstrumentationEnabled());
   }
 
   public Instrumenter<KafkaReceiveRequest, Void> createBatchProcessInstrumenter(
