@@ -25,6 +25,7 @@ import static io.opentelemetry.semconv.NetworkAttributes.NETWORK_PEER_PORT;
 import static io.opentelemetry.semconv.NetworkAttributes.NETWORK_TYPE;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_ADDRESS;
 import static io.opentelemetry.semconv.ServerAttributes.SERVER_PORT;
+import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_MESSAGE_BODY_SIZE;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_OPERATION;
@@ -137,6 +138,10 @@ class RabbitMqTest extends AbstractRabbitMqTest {
                                 : queueName + " receive")
                         .hasKind(emitStableMessagingSemconv() ? SpanKind.CLIENT : SpanKind.CONSUMER)
                         .hasNoParent()
+                        .hasAttributesSatisfying(
+                            equalTo(
+                                MESSAGING_BATCH_MESSAGE_COUNT,
+                                emitStableMessagingSemconv() ? 0L : null))
                         .hasTotalRecordedLinks(0)));
     assertReceiveMetrics(testing, queueName, null, 0);
   }
