@@ -1122,6 +1122,7 @@ class RabbitMqTest extends AbstractRabbitMqTest {
         equalTo(
             MESSAGING_OPERATION_TYPE,
             emitStableMessagingSemconv() ? "publish".equals(operation) ? "send" : operation : null),
+        equalTo(MESSAGING_BATCH_MESSAGE_COUNT, null),
         satisfies(
             MESSAGING_RABBITMQ_MESSAGE_DELIVERY_TAG,
             val -> {
