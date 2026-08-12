@@ -363,6 +363,7 @@ public final class JmsConsumerContext {
   }
 
   private static class IdentityWeakReference<T> extends WeakReference<T> {
+    // Cache the identity hash because WeakReference clears its referent before enqueueing.
     private final int hashCode;
 
     private IdentityWeakReference(T value, ReferenceQueue<T> referenceQueue) {
@@ -383,6 +384,8 @@ public final class JmsConsumerContext {
       if (!(other instanceof IdentityWeakReference)) {
         return false;
       }
+      // Cleared references only compare equal to themselves so the queue removes the exact set
+      // entry.
       Object value = get();
       return value != null && value == ((IdentityWeakReference<?>) other).get();
     }
