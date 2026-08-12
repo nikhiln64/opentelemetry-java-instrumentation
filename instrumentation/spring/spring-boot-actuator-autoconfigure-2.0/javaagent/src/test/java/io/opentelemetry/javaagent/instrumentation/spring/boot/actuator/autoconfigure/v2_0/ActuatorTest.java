@@ -18,6 +18,7 @@ import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.javaagent.instrumentation.micrometer.v1_5.MicrometerSingletons;
 import io.opentelemetry.javaagent.instrumentation.spring.boot.actuator.autoconfigure.v2_0.SpringApp.TestBean;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,6 +107,46 @@ class ActuatorTest {
     // The registry is shared by both contexts. Keeping meters visible is safer than hiding the only
     // copy available to a context that has no readable sibling.
     assertThat(otelMeterRegistry.find("test-counter").counter()).isNotNull();
+  }
+
+  @Test
+  void shouldKeepMetersVisibleWithOnlyOpenTelemetryRegistries()
+      throws ReflectiveOperationException {
+    ConfigurableApplicationContext context = new SpringApplication(SpringApp.class).run();
+    cleanup.deferCleanup(context);
+
+    context.getBean(TestBean.class).inc();
+
+    MeterRegistry otelMeterRegistry = MicrometerSingletons.meterRegistry();
+    CompositeMeterRegistry composite =
+        (CompositeMeterRegistry) context.getBean(MeterRegistry.class);
+    for (MeterRegistry registry : composite.getRegistries()) {
+      if (registry != otelMeterRegistry) {
+        composite.remove(registry);
+      }
+    }
+    MeterRegistry userDefinedOtelRegistry = newOpenTelemetryMeterRegistry(otelMeterRegistry);
+    cleanup.deferCleanup(userDefinedOtelRegistry::close);
+    composite.add(userDefinedOtelRegistry);
+
+    assertThat(otelMeterRegistry.find("test-counter").counter()).isNotNull();
+  }
+
+  private static MeterRegistry newOpenTelemetryMeterRegistry(MeterRegistry otelMeterRegistry)
+      throws ReflectiveOperationException {
+    Method createMethod =
+        Arrays.stream(otelMeterRegistry.getClass().getMethods())
+            .filter(method -> method.getName().equals("create"))
+            .findFirst()
+            .get();
+    Class<?> openTelemetryClass = createMethod.getParameterTypes()[0];
+    Class<?> globalOpenTelemetryClass =
+        Class.forName(
+            openTelemetryClass.getPackage().getName() + ".GlobalOpenTelemetry",
+            true,
+            openTelemetryClass.getClassLoader());
+    Object openTelemetry = globalOpenTelemetryClass.getMethod("get").invoke(null);
+    return (MeterRegistry) createMethod.invoke(null, openTelemetry);
   }
 
   private static ConfigurableApplicationContext runOtelOnlyApplication() {

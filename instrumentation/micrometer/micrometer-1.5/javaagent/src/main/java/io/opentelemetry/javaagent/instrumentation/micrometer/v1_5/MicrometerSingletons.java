@@ -150,7 +150,14 @@ public class MicrometerSingletons {
         return false;
       }
       for (IdentityHashMap<MeterRegistry, Boolean> registries : compositeMeterRegistries.values()) {
-        if (registries.size() == 1 && registries.containsKey(meterRegistry)) {
+        boolean hasReadableRegistry = false;
+        for (MeterRegistry registry : registries.keySet()) {
+          if (!(registry instanceof OpenTelemetryMeterRegistry)) {
+            hasReadableRegistry = true;
+            break;
+          }
+        }
+        if (!hasReadableRegistry) {
           return false;
         }
       }
