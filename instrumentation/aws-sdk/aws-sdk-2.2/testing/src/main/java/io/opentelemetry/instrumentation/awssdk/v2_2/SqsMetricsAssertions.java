@@ -64,7 +64,7 @@ final class SqsMetricsAssertions {
                                                 equalTo(SERVER_ADDRESS, "localhost"),
                                                 equalTo(SERVER_PORT, serverPort))))));
     assertMessageCounter(
-        testing, "messaging.client.sent.messages", "send", messageCount, true, serverPort);
+        testing, "messaging.client.sent.messages", "send", messageCount, serverPort);
     assertNoDeprecatedMessagingMetrics(testing);
   }
 
@@ -81,7 +81,7 @@ final class SqsMetricsAssertions {
     assertClientOperationDuration(
         testing, serverPort, receiveOperationCount, "receive", "testSdkSqs", null, 1);
     assertMessageCounter(
-        testing, "messaging.client.consumed.messages", "receive", messageCount, true, serverPort);
+        testing, "messaging.client.consumed.messages", "receive", messageCount, serverPort);
     assertProcessDuration(testing, serverPort, messageCount);
     assertNoDeprecatedMessagingMetrics(testing);
   }
@@ -106,7 +106,7 @@ final class SqsMetricsAssertions {
 
     assertProcessDuration(testing, serverPort, messageCount);
     assertMessageCounter(
-        testing, "messaging.client.consumed.messages", "process", messageCount, true, serverPort);
+        testing, "messaging.client.consumed.messages", "process", messageCount, serverPort);
     assertThat(testing.metrics())
         .filteredOn(
             metric -> metric.getInstrumentationScopeInfo().getName().equals(INSTRUMENTATION_NAME))
@@ -190,7 +190,6 @@ final class SqsMetricsAssertions {
       String metricName,
       String operationName,
       long messageCount,
-      boolean includeServer,
       int serverPort) {
     testing.waitAndAssertMetrics(
         INSTRUMENTATION_NAME,
@@ -207,24 +206,16 @@ final class SqsMetricsAssertions {
                         .hasLongSumSatisfying(
                             sum ->
                                 sum.hasPointsSatisfying(
-                                    point -> {
-                                      if (includeServer) {
-                                        point.hasAttributesSatisfyingExactly(
-                                            equalTo(MESSAGING_OPERATION_NAME, operationName),
-                                            equalTo(MESSAGING_SYSTEM, AWS_SQS),
-                                            equalTo(ERROR_TYPE, null),
-                                            equalTo(MESSAGING_DESTINATION_NAME, "testSdkSqs"),
-                                            equalTo(SERVER_ADDRESS, "localhost"),
-                                            equalTo(SERVER_PORT, serverPort));
-                                      } else {
-                                        point.hasAttributesSatisfyingExactly(
-                                            equalTo(MESSAGING_OPERATION_NAME, operationName),
-                                            equalTo(MESSAGING_SYSTEM, AWS_SQS),
-                                            equalTo(ERROR_TYPE, null),
-                                            equalTo(MESSAGING_DESTINATION_NAME, "testSdkSqs"));
-                                      }
-                                      point.hasValue(messageCount);
-                                    }))));
+                                    point ->
+                                        point
+                                            .hasAttributesSatisfyingExactly(
+                                                equalTo(MESSAGING_OPERATION_NAME, operationName),
+                                                equalTo(MESSAGING_SYSTEM, AWS_SQS),
+                                                equalTo(ERROR_TYPE, null),
+                                                equalTo(MESSAGING_DESTINATION_NAME, "testSdkSqs"),
+                                                equalTo(SERVER_ADDRESS, "localhost"),
+                                                equalTo(SERVER_PORT, serverPort))
+                                            .hasValue(messageCount)))));
   }
 
   private static void assertNoMessagingMetrics(InstrumentationExtension testing) {
