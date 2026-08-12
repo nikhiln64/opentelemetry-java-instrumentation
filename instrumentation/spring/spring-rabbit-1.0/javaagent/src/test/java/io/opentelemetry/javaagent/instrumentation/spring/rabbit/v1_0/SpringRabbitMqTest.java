@@ -8,6 +8,7 @@ package io.opentelemetry.javaagent.instrumentation.spring.rabbit.v1_0;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitOldMessagingSemconv;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static io.opentelemetry.instrumentation.testing.junit.message.MessageHeaderUtil.headerAttributeKey;
+import static io.opentelemetry.instrumentation.testing.util.TestLatestDeps.testLatestDeps;
 import static io.opentelemetry.javaagent.instrumentation.spring.rabbit.v1_0.SpringRabbitMetricsAssertions.assertProcessMetrics;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
@@ -299,7 +300,9 @@ class SpringRabbitMqTest {
     assertProcessMetrics(
         testing,
         ConsumerConfig.ERROR_QUEUE,
-        "org.springframework.amqp.rabbit.listener.exception.ListenerExecutionFailedException");
+        testLatestDeps()
+            ? "org.springframework.amqp.rabbit.support.ListenerExecutionFailedException"
+            : "org.springframework.amqp.rabbit.listener.exception.ListenerExecutionFailedException");
   }
 
   @ParameterizedTest
