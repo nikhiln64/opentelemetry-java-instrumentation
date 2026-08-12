@@ -43,12 +43,15 @@ class CamelSingletons {
   private static final Instrumenter<CamelRequest, Void> httpClientInstrumenter =
       createHttpClientInstrumenter();
   private static final Instrumenter<CamelRequest, Void> messagingSendInstrumenter =
-      createMessagingInstrumenter(SEND, "send", true);
+      createMessagingInstrumenter(SEND, "send", true, true);
+  // AWS SNS delegates broker I/O to the nested AWS SDK instrumentation, which owns the metrics.
+  private static final Instrumenter<CamelRequest, Void> awsSnsMessagingSendInstrumenter =
+      createMessagingInstrumenter(SEND, "send", true, false);
   // AWS SQS sends rely on the nested AWS SDK producer span to inject propagation.
   private static final Instrumenter<CamelRequest, Void> keylessMessagingSendInstrumenter =
-      createMessagingInstrumenter(SEND, "send", false);
+      createMessagingInstrumenter(SEND, "send", false, false);
   private static final Instrumenter<CamelRequest, Void> messagingProcessInstrumenter =
-      createMessagingInstrumenter(PROCESS, "process", true);
+      createMessagingInstrumenter(PROCESS, "process", true, false);
 
   private static Instrumenter<CamelRequest, Void> createInstrumenter() {
     return createInstrumenter(false);
@@ -77,7 +80,10 @@ class CamelSingletons {
   }
 
   private static Instrumenter<CamelRequest, Void> createMessagingInstrumenter(
-      MessagingOperationType operationType, String operationName, boolean exposeSpanKey) {
+      MessagingOperationType operationType,
+      String operationName,
+      boolean exposeSpanKey,
+      boolean recordProducerMetrics) {
     MessagingAttributesGetter<CamelRequest, Void> getter = new CamelMessagingAttributesGetter();
     SpanNameExtractor<CamelRequest> legacySpanNameExtractor =
         request ->
@@ -99,7 +105,7 @@ class CamelSingletons {
               : new KeylessAttributesExtractor(attributesExtractor));
     }
 
-    if (operationType == SEND && exposeSpanKey) {
+    if (operationType == SEND && recordProducerMetrics) {
       builder.addOperationMetrics(MessagingProducerMetrics.getForOperationType());
     }
     if (operationType == PROCESS && emitStableMessagingSemconv()) {
@@ -138,6 +144,9 @@ class CamelSingletons {
   static Instrumenter<CamelRequest, Void> instrumenter(CamelRequest request) {
     if (request.isMessaging()) {
       if (request.getCamelDirection() == CamelDirection.OUTBOUND) {
+        if (request.getMessagingSystem().equals("aws.sns")) {
+          return awsSnsMessagingSendInstrumenter;
+        }
         return request.isMessagingSpanContextPropagated()
             ? messagingSendInstrumenter
             : keylessMessagingSendInstrumenter;
