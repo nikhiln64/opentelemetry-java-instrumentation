@@ -20,7 +20,7 @@ import io.opentelemetry.javaagent.extension.instrumentation.TypeInstrumentation;
 import io.opentelemetry.javaagent.extension.instrumentation.TypeTransformer;
 import io.opentelemetry.javaagent.instrumentation.jms.common.v1_1.MessageWithDestination;
 import io.opentelemetry.javaagent.instrumentation.jms.v3_0.JakartaMessageAdapter;
-import io.opentelemetry.javaagent.instrumentation.jms.v3_0.JmsConsumerContext;
+import io.opentelemetry.javaagent.instrumentation.jms.v3_0.JmsSubscriptionNames;
 import jakarta.jms.Message;
 import javax.annotation.Nullable;
 import net.bytebuddy.asm.Advice;
@@ -73,9 +73,7 @@ class SpringJmsMessageListenerInstrumentation implements TypeInstrumentation {
         }
         MessageWithDestination request =
             MessageWithDestination.create(
-                JakartaMessageAdapter.create(message),
-                null,
-                JmsConsumerContext.getSubscriptionName(message));
+                JakartaMessageAdapter.create(message), null, JmsSubscriptionNames.get(message));
 
         if (!listenerInstrumenter().shouldStart(parentContext, request)) {
           return null;

@@ -18,7 +18,6 @@ import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 
 import io.opentelemetry.sdk.trace.data.LinkData;
 import io.opentelemetry.sdk.trace.data.SpanData;
-import jakarta.jms.Connection;
 import jakarta.jms.Destination;
 import jakarta.jms.JMSException;
 import jakarta.jms.MessageConsumer;
@@ -85,7 +84,7 @@ class Jms3InstrumentationTest extends AbstractJms3Test {
   }
 
   @ParameterizedTest
-  @MethodSource("sharedConsumerArguments")
+  @MethodSource("sharedReceiveConsumerArguments")
   void capturesSharedConsumerNameOnReceive(
       String subscriptionName, SharedConsumerFactory consumerFactory) throws JMSException {
     Topic topic = session.createTopic("shared-receive-topic");
@@ -137,7 +136,7 @@ class Jms3InstrumentationTest extends AbstractJms3Test {
   }
 
   @ParameterizedTest
-  @MethodSource("sharedConsumerArguments")
+  @MethodSource("sharedListenerConsumerArguments")
   void capturesSharedConsumerNameOnProviderStyleListenerDispatch(
       String subscriptionName, SharedConsumerFactory consumerFactory) throws JMSException {
     Topic topic = session.createTopic("shared-listener-topic");
@@ -174,30 +173,22 @@ class Jms3InstrumentationTest extends AbstractJms3Test {
   }
 
   @Test
-  void capturesSharedConsumerNameAfterImplicitConnectionClose() throws JMSException {
+  void capturesMostRecentSubscriptionNameForReusedListener() throws JMSException {
+    Topic topic = session.createTopic("reused-listener-topic");
+    TextMessage message = session.createTextMessage("hello there");
+    message.setJMSDestination(topic);
     MessageListener listener = ignored -> {};
-    Connection firstConnection = connectionFactory.createConnection();
-    firstConnection.setClientID("implicit-close-first");
-    firstConnection.start();
-    Session firstSession = firstConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-    Topic firstTopic = firstSession.createTopic("implicit-close-topic");
-    MessageConsumer firstConsumer = firstSession.createConsumer(firstTopic);
-    firstConsumer.setMessageListener(listener);
-    firstConnection.close();
 
-    Connection secondConnection = connectionFactory.createConnection();
-    cleanup.deferCleanup(secondConnection);
-    secondConnection.setClientID("implicit-close-second");
-    secondConnection.start();
-    Session secondSession = secondConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-    Topic secondTopic = secondSession.createTopic("implicit-close-topic");
-    TextMessage message = secondSession.createTextMessage("hello there");
-    message.setJMSDestination(secondTopic);
-    MessageConsumer secondConsumer =
-        secondSession.createSharedConsumer(secondTopic, "active-subscription");
-    secondConsumer.setMessageListener(listener);
+    MessageConsumer consumerWithoutSubscription = session.createConsumer(topic);
+    cleanup.deferCleanup(consumerWithoutSubscription);
+    consumerWithoutSubscription.setMessageListener(listener);
 
-    secondConsumer.getMessageListener().onMessage(message);
+    MessageConsumer sharedConsumer =
+        session.createSharedConsumer(topic, "reused-listener-subscription");
+    cleanup.deferCleanup(sharedConsumer);
+    sharedConsumer.setMessageListener(listener);
+
+    sharedConsumer.getMessageListener().onMessage(message);
 
     testing.waitAndAssertTraces(
         trace ->
@@ -208,12 +199,12 @@ class Jms3InstrumentationTest extends AbstractJms3Test {
                         .hasAttributesSatisfyingExactly(
                             equalTo(MESSAGING_SYSTEM, "jms"),
                             messagingDestinationName(
-                                "implicit-close-topic", "implicit-close-topic"),
+                                "reused-listener-topic", "reused-listener-topic"),
                             oldOperation("process"),
                             operationName("process"),
                             operationType("process"),
                             messagingTempDestination(false),
-                            subscriptionName("active-subscription"))));
+                            subscriptionName("reused-listener-subscription"))));
   }
 
   @SuppressWarnings("deprecation") // using deprecated semconv
@@ -292,13 +283,25 @@ class Jms3InstrumentationTest extends AbstractJms3Test {
                             equalTo(MESSAGING_MESSAGE_ID, messageId))));
   }
 
-  private static Stream<Arguments> sharedConsumerArguments() {
+  private static Stream<Arguments> sharedReceiveConsumerArguments() {
+    return sharedConsumerArguments("receive");
+  }
+
+  private static Stream<Arguments> sharedListenerConsumerArguments() {
+    return sharedConsumerArguments("listener");
+  }
+
+  // durable subscriptions outlive the consumer that created them, so each test needs its own
+  // subscription names
+  private static Stream<Arguments> sharedConsumerArguments(String scenario) {
     return Stream.of(
         argumentSet(
-            "shared", "shared-subscription", (SharedConsumerFactory) Session::createSharedConsumer),
+            "shared",
+            "shared-" + scenario + "-subscription",
+            (SharedConsumerFactory) Session::createSharedConsumer),
         argumentSet(
             "shared durable",
-            "shared-durable-subscription",
+            "shared-durable-" + scenario + "-subscription",
             (SharedConsumerFactory) Session::createSharedDurableConsumer));
   }
 

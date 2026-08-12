@@ -61,10 +61,10 @@ class JmsMessageListenerInstrumentation implements TypeInstrumentation {
       @Nullable
       public static AdviceScope start(MessageListener messageListener, Message message) {
         Context parentContext = Context.current();
-        String subscriptionName = JmsConsumerContext.getSubscriptionName(message);
+        String subscriptionName = JmsSubscriptionNames.get(message);
         if (subscriptionName == null) {
-          subscriptionName = JmsConsumerContext.getSubscriptionName(messageListener);
-          JmsConsumerContext.setSubscriptionName(message, subscriptionName);
+          subscriptionName = JmsSubscriptionNames.get(messageListener);
+          JmsSubscriptionNames.set(message, subscriptionName);
         }
         MessageWithDestination messageWithDestination =
             MessageWithDestination.create(

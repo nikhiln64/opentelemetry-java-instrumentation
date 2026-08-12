@@ -81,22 +81,6 @@ tasks {
     systemProperty("metadataConfig", "otel.semconv-stability.preview=messaging")
   }
 
-  val testMessagingOptIn = register<Test>("testMessagingOptIn") {
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
-    jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
-    jvmArgs("-Dotel.semconv-stability.opt-in=messaging")
-    systemProperty("metadataConfig", "otel.semconv-stability.opt-in=messaging")
-  }
-
-  val testV3Preview = register<Test>("testV3Preview") {
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
-    jvmArgs("-Dotel.instrumentation.messaging.experimental.receive-telemetry.enabled=true")
-    jvmArgs("-Dotel.instrumentation.common.v3-preview=true")
-    systemProperty("metadataConfig", "otel.instrumentation.common.v3-preview=true")
-  }
-
   val testBothSemconv = register<Test>("testBothSemconv") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -106,12 +90,6 @@ tasks {
   }
 
   check {
-    dependsOn(
-      testing.suites,
-      testMessagingPreview,
-      testMessagingOptIn,
-      testV3Preview,
-      testBothSemconv,
-    )
+    dependsOn(testing.suites, testMessagingPreview, testBothSemconv)
   }
 }

@@ -59,9 +59,6 @@ class JmsMessageConsumerInstrumentation implements TypeInstrumentation {
             .and(takesArgument(0, named("jakarta.jms.MessageListener")))
             .and(isPublic()),
         getClass().getName() + "$SetMessageListenerAdvice");
-    transformer.applyAdviceToMethod(
-        named("close").and(takesArguments(0)).and(isPublic()),
-        getClass().getName() + "$CloseAdvice");
   }
 
   @SuppressWarnings("unused")
@@ -82,8 +79,8 @@ class JmsMessageConsumerInstrumentation implements TypeInstrumentation {
         return;
       }
 
-      String subscriptionName = JmsConsumerContext.getSubscriptionName(consumer);
-      JmsConsumerContext.setSubscriptionName(message, subscriptionName);
+      String subscriptionName = JmsSubscriptionNames.get(consumer);
+      JmsSubscriptionNames.set(message, subscriptionName);
       MessageWithDestination request =
           MessageWithDestination.create(
               JakartaMessageAdapter.create(message), null, subscriptionName);
@@ -95,31 +92,14 @@ class JmsMessageConsumerInstrumentation implements TypeInstrumentation {
   @SuppressWarnings("unused")
   public static class SetMessageListenerAdvice {
 
-    @Nullable
-    @Advice.OnMethodEnter(suppress = Throwable.class, inline = false)
-    public static JmsConsumerContext.ListenerUpdate onEnter(
-        @Advice.This MessageConsumer consumer,
-        @Advice.Argument(0) @Nullable MessageListener messageListener) {
-      return JmsConsumerContext.updateMessageListener(consumer, messageListener);
-    }
-
-    @Advice.OnMethodExit(onThrowable = Throwable.class, suppress = Throwable.class, inline = false)
+    // only applied on normal return, i.e. after the listener was successfully registered
+    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
     public static void onExit(
         @Advice.This MessageConsumer consumer,
-        @Advice.Enter @Nullable JmsConsumerContext.ListenerUpdate update,
-        @Advice.Thrown @Nullable Throwable throwable) {
-      if (throwable != null) {
-        JmsConsumerContext.rollbackMessageListener(consumer, update);
+        @Advice.Argument(0) @Nullable MessageListener messageListener) {
+      if (messageListener != null) {
+        JmsSubscriptionNames.set(messageListener, JmsSubscriptionNames.get(consumer));
       }
-    }
-  }
-
-  @SuppressWarnings("unused")
-  public static class CloseAdvice {
-
-    @Advice.OnMethodExit(suppress = Throwable.class, inline = false)
-    public static void onExit(@Advice.This MessageConsumer consumer) {
-      JmsConsumerContext.closeConsumer(consumer);
     }
   }
 }

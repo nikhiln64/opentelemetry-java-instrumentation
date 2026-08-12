@@ -53,18 +53,18 @@ class JmsMessageListenerInstrumentation implements TypeInstrumentation {
 
       private AdviceScope(
           MessageWithDestination messageWithDestination, Context context, Scope scope) {
-        this.scope = scope;
-        this.context = context;
         this.messageWithDestination = messageWithDestination;
+        this.context = context;
+        this.scope = scope;
       }
 
       @Nullable
       public static AdviceScope start(MessageListener messageListener, Message message) {
         Context parentContext = Context.current();
-        String subscriptionName = JmsConsumerContext.getSubscriptionName(message);
+        String subscriptionName = JmsSubscriptionNames.get(message);
         if (subscriptionName == null) {
-          subscriptionName = JmsConsumerContext.getSubscriptionName(messageListener);
-          JmsConsumerContext.setSubscriptionName(message, subscriptionName);
+          subscriptionName = JmsSubscriptionNames.get(messageListener);
+          JmsSubscriptionNames.set(message, subscriptionName);
         }
         MessageWithDestination messageWithDestination =
             MessageWithDestination.create(
