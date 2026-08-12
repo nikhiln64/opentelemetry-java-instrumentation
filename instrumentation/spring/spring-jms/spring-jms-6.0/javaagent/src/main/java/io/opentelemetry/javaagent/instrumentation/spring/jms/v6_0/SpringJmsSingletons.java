@@ -16,7 +16,7 @@ public class SpringJmsSingletons {
   private static final String INSTRUMENTATION_NAME = "io.opentelemetry.spring-jms-6.0";
 
   @Nullable
-  public static final Boolean RECEIVE_TELEMETRY_ENABLED =
+  static final Boolean receiveTelemetryEnabled =
       ExperimentalConfig.get().messagingReceiveInstrumentationEnabled();
 
   private static final Instrumenter<MessageWithDestination, Void> listenerInstrumenter;
@@ -26,12 +26,12 @@ public class SpringJmsSingletons {
     JmsInstrumenterFactory factory =
         new JmsInstrumenterFactory(GlobalOpenTelemetry.get(), INSTRUMENTATION_NAME)
             .setCapturedHeaders(ExperimentalConfig.get().getMessagingHeaders());
-    if (RECEIVE_TELEMETRY_ENABLED != null) {
-      factory.setMessagingReceiveTelemetryEnabled(RECEIVE_TELEMETRY_ENABLED);
+    if (receiveTelemetryEnabled != null) {
+      factory.setMessagingReceiveTelemetryEnabled(receiveTelemetryEnabled);
     }
 
     listenerInstrumenter =
-        factory.createConsumerProcessInstrumenter(Boolean.TRUE.equals(RECEIVE_TELEMETRY_ENABLED));
+        factory.createConsumerProcessInstrumenter(Boolean.TRUE.equals(receiveTelemetryEnabled));
     receiveInstrumenter = factory.createConsumerReceiveInstrumenter();
   }
 

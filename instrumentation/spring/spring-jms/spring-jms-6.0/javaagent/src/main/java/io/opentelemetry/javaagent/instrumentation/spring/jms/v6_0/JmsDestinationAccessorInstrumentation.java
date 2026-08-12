@@ -8,8 +8,8 @@ package io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0;
 import static io.opentelemetry.api.trace.SpanKind.CLIENT;
 import static io.opentelemetry.api.trace.SpanKind.CONSUMER;
 import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
-import static io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0.SpringJmsSingletons.RECEIVE_TELEMETRY_ENABLED;
 import static io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0.SpringJmsSingletons.receiveInstrumenter;
+import static io.opentelemetry.javaagent.instrumentation.spring.jms.v6_0.SpringJmsSingletons.receiveTelemetryEnabled;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static net.bytebuddy.matcher.ElementMatchers.returns;
 
@@ -45,7 +45,7 @@ class JmsDestinationAccessorInstrumentation implements TypeInstrumentation {
     @Nullable
     public static Scope onEnter() {
       Context currentContext = Java8BytecodeBridge.currentContext();
-      if (Boolean.TRUE.equals(RECEIVE_TELEMETRY_ENABLED)
+      if (Boolean.TRUE.equals(receiveTelemetryEnabled)
           || !JmsReceiveContextHolder.isInitialized(currentContext)) {
         return null;
       }
