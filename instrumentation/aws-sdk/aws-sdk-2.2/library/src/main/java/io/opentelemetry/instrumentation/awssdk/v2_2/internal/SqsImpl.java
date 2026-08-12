@@ -138,7 +138,8 @@ public final class SqsImpl {
     if (!(request instanceof ReceiveMessageRequest)) {
       return false;
     }
-    if (TracingExecutionInterceptor.isSqsInternalListenerPoll(executionAttributes)) {
+    if (TracingExecutionInterceptor.isSqsInternalListenerPoll(executionAttributes)
+        && !config.isMessagingReceiveInstrumentationExplicitlyEnabled()) {
       return true;
     }
     io.opentelemetry.context.Context parentContext =
