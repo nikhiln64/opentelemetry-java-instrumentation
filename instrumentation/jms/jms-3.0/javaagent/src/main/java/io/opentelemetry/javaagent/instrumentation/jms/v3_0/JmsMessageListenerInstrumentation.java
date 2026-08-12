@@ -5,6 +5,7 @@
 
 package io.opentelemetry.javaagent.instrumentation.jms.v3_0;
 
+import static io.opentelemetry.instrumentation.api.internal.SemconvStability.emitStableMessagingSemconv;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.hasClassesNamed;
 import static io.opentelemetry.javaagent.extension.matcher.AgentElementMatchers.implementsInterface;
 import static io.opentelemetry.javaagent.instrumentation.jms.v3_0.JmsSingletons.consumerProcessAfterReceiveInstrumenter;
@@ -68,20 +69,34 @@ class JmsMessageListenerInstrumentation implements TypeInstrumentation {
       @Nullable
       public static AdviceScope start(Message message) {
         Context currentContext = Context.current();
-        Context receiveContext = JmsReceiveContextHolder.getReceiveContext(currentContext);
-        Context parentContext = receiveContext != null ? receiveContext : currentContext;
+        boolean stableMessagingSemconv = emitStableMessagingSemconv();
+        Context parentContext = currentContext;
+        if (!stableMessagingSemconv) {
+          Context receiveContext = JmsReceiveContextHolder.getReceiveContext(currentContext);
+          if (receiveContext != null) {
+            parentContext = receiveContext;
+          }
+        }
         MessageWithDestination messageWithDestination =
             MessageWithDestination.create(JakartaMessageAdapter.create(message), null);
+        boolean receiveTelemetryRecorded =
+            JmsReceiveContextHolder.isReceiveTelemetryRecorded(currentContext);
         Instrumenter<MessageWithDestination, Void> instrumenter =
-            JmsReceiveContextHolder.isReceiveTelemetryRecorded(currentContext)
+            receiveTelemetryRecorded
                 ? consumerProcessAfterReceiveInstrumenter()
                 : consumerProcessInstrumenter();
 
+        if (!instrumenter.shouldStart(parentContext, messageWithDestination)) {
+          return null;
+        }
+
         Context context;
-        try (Scope ignored = Context.root().makeCurrent()) {
-          if (!instrumenter.shouldStart(currentContext, messageWithDestination)) {
-            return null;
+        if (!stableMessagingSemconv && !receiveTelemetryRecorded) {
+          // The legacy consumer instrumenter extracts remote context and checks for context leaks.
+          try (Scope ignored = Context.root().makeCurrent()) {
+            context = instrumenter.start(parentContext, messageWithDestination);
           }
+        } else {
           context = instrumenter.start(parentContext, messageWithDestination);
         }
         return new AdviceScope(

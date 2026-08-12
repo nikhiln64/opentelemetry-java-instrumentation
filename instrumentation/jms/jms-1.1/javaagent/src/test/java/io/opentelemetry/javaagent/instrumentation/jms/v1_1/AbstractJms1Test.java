@@ -15,6 +15,7 @@ import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAss
 import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertHistogram;
 import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoDeprecatedMetrics;
 import static io.opentelemetry.instrumentation.testing.junit.MessagingMetricsAssertions.assertNoStableMetrics;
+import static io.opentelemetry.instrumentation.testing.util.TelemetryDataUtil.orderByRootSpanName;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.equalTo;
 import static io.opentelemetry.sdk.testing.assertj.OpenTelemetryAssertions.satisfies;
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT;
@@ -36,13 +37,17 @@ import io.opentelemetry.instrumentation.testing.internal.AutoCleanupExtension;
 import io.opentelemetry.instrumentation.testing.junit.AgentInstrumentationExtension;
 import io.opentelemetry.instrumentation.testing.junit.InstrumentationExtension;
 import io.opentelemetry.sdk.testing.assertj.AttributeAssertion;
+import io.opentelemetry.sdk.trace.data.LinkData;
+import io.opentelemetry.sdk.trace.data.SpanData;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
+import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
@@ -50,6 +55,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.command.ActiveMQTextMessage;
 import org.assertj.core.api.AbstractAssert;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -161,6 +167,75 @@ abstract class AbstractJms1Test {
                             messagingTempDestination(isTemporary)),
                 span -> span.hasName("consumer").hasParent(trace.getSpan(2))));
     assertProducerAndProcessMetrics(testing, destinationName, isTemporary);
+  }
+
+  @Test
+  void processParentWithAmbientAndRecordedReceive() throws Exception {
+    Destination destination = session.createQueue("ambient-parent");
+    TextMessage sentMessage = session.createTextMessage("a message");
+    MessageProducer producer = session.createProducer(destination);
+    cleanup.deferCleanup(producer::close);
+    MessageConsumer consumer = session.createConsumer(destination);
+    cleanup.deferCleanup(consumer::close);
+
+    testing.runWithSpan("producer parent", () -> producer.send(sentMessage));
+    TextMessage receivedMessage;
+    try (AutoCloseable ignored = makeReceiveContextHolderCurrent()) {
+      receivedMessage = (TextMessage) consumer.receive();
+      testing.runWithSpan("ambient", () -> new NoopMessageListener().onMessage(receivedMessage));
+    }
+    assertThat(receivedMessage.getText()).isEqualTo(sentMessage.getText());
+
+    AtomicReference<SpanData> producerSpan = new AtomicReference<>();
+    String sendSpanName =
+        emitStableMessagingSemconv() ? "send ambient-parent" : "ambient-parent publish";
+    String receiveSpanName =
+        emitStableMessagingSemconv() ? "receive ambient-parent" : "ambient-parent receive";
+    String processSpanName =
+        emitStableMessagingSemconv() ? "process ambient-parent" : "ambient-parent process";
+    testing.waitAndAssertSortedTraces(
+        orderByRootSpanName("producer parent", receiveSpanName, "ambient"),
+        trace -> {
+          trace.hasSpansSatisfyingExactly(
+              span -> span.hasName("producer parent").hasNoParent(),
+              span -> span.hasName(sendSpanName).hasKind(PRODUCER).hasParent(trace.getSpan(0)));
+          producerSpan.set(trace.getSpan(1));
+        },
+        trace -> {
+          if (emitStableMessagingSemconv()) {
+            trace.hasSpansSatisfyingExactly(
+                span ->
+                    span.hasName(receiveSpanName)
+                        .hasKind(CLIENT)
+                        .hasNoParent()
+                        .hasLinks(LinkData.create(producerSpan.get().getSpanContext())));
+          } else {
+            trace.hasSpansSatisfyingExactly(
+                span ->
+                    span.hasName(receiveSpanName)
+                        .hasKind(CONSUMER)
+                        .hasNoParent()
+                        .hasLinks(LinkData.create(producerSpan.get().getSpanContext())),
+                span ->
+                    span.hasName(processSpanName)
+                        .hasKind(CONSUMER)
+                        .hasParent(trace.getSpan(0))
+                        .hasLinks(LinkData.create(producerSpan.get().getSpanContext())));
+          }
+        },
+        trace -> {
+          if (emitStableMessagingSemconv()) {
+            trace.hasSpansSatisfyingExactly(
+                span -> span.hasName("ambient").hasNoParent(),
+                span ->
+                    span.hasName(processSpanName)
+                        .hasKind(CONSUMER)
+                        .hasParent(trace.getSpan(0))
+                        .hasLinks(LinkData.create(producerSpan.get().getSpanContext())));
+          } else {
+            trace.hasSpansSatisfyingExactly(span -> span.hasName("ambient").hasNoParent());
+          }
+        });
   }
 
   @ParameterizedTest
@@ -502,6 +577,27 @@ abstract class AbstractJms1Test {
 
   boolean emptyReceiveTelemetryEnabled() {
     return true;
+  }
+
+  private static AutoCloseable makeReceiveContextHolderCurrent() {
+    try {
+      Class<?> contextClass =
+          Class.forName(
+              "io.opentelemetry.javaagent.shaded.io.opentelemetry.context.Context", false, null);
+      Class<?> holderClass =
+          Class.forName(
+              "io.opentelemetry.javaagent.bootstrap.jms.JmsReceiveContextHolder", false, null);
+      Object rootContext = contextClass.getMethod("root").invoke(null);
+      Object holderContext = holderClass.getMethod("init", contextClass).invoke(null, rootContext);
+      return (AutoCloseable) contextClass.getMethod("makeCurrent").invoke(holderContext);
+    } catch (ReflectiveOperationException e) {
+      throw new LinkageError(e.getMessage(), e);
+    }
+  }
+
+  static class NoopMessageListener implements MessageListener {
+    @Override
+    public void onMessage(Message message) {}
   }
 
   protected static Stream<Arguments> destinationArguments() {
