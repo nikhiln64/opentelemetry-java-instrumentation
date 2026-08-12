@@ -107,9 +107,23 @@ public final class SystemProperty {
    * to support Declarative Config.
    */
   public static List<String> getList(String propertyName, List<String> defaultValue) {
+    List<String> value = getList(propertyName);
+    return value == null ? defaultValue : value;
+  }
+
+  /**
+   * Returns the list of strings value of the given property name from system properties and
+   * environment variables, or {@code null} if not found. The property value is expected to be a
+   * comma-separated list.
+   *
+   * <p>It's recommended to use {@link io.opentelemetry.api.incubator.config.ConfigProvider} instead
+   * to support Declarative Config.
+   */
+  @Nullable
+  public static List<String> getList(String propertyName) {
     String value = getString(propertyName);
     if (value == null) {
-      return defaultValue;
+      return null;
     }
     return filterBlanksAndNulls(value.split(","));
   }
