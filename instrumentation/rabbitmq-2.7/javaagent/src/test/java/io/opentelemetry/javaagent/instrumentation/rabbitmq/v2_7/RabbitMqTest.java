@@ -111,11 +111,16 @@ class RabbitMqTest extends AbstractRabbitMqTest {
       if (channel != null) {
         channel.close();
       }
-      if (conn != null) {
-        conn.close();
-      }
     } catch (ShutdownSignalException ignored) {
       // ignored
+    } finally {
+      try {
+        if (conn != null) {
+          conn.close();
+        }
+      } catch (ShutdownSignalException ignored) {
+        // ignored
+      }
     }
   }
 
