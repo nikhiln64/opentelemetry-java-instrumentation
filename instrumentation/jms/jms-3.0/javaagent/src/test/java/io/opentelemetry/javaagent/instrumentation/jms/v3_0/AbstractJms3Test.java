@@ -372,25 +372,6 @@ abstract class AbstractJms3Test {
     assertNoDeprecatedMetrics(testing);
   }
 
-  static void assertProducerMetrics(String producerDestinationName, boolean isTemporary) {
-    if (!emitStableMessagingSemconv()) {
-      assertNoStableMetrics(testing);
-      assertNoDeprecatedMetrics(testing);
-      return;
-    }
-    assertCounter(
-        testing,
-        "io.opentelemetry.jms-3.0",
-        "messaging.client.sent.messages",
-        metricAttributes("send", producerDestinationName, isTemporary, false));
-    assertHistogram(
-        testing,
-        "io.opentelemetry.jms-3.0",
-        "messaging.client.operation.duration",
-        metricAttributes("send", producerDestinationName, isTemporary, true));
-    assertNoDeprecatedMetrics(testing);
-  }
-
   private static void assertProducerAndProcessMetrics(
       String producerDestinationName, String consumerDestinationName, boolean isTemporary) {
     if (!emitStableMessagingSemconv()) {
