@@ -88,12 +88,6 @@ public abstract class AbstractReactorKafkaTest {
   private static KafkaSender<String, String> sender;
   protected static KafkaReceiver<String, String> receiver;
 
-  private static boolean receiveTelemetryEnabled() {
-    String configured =
-        System.getProperty("otel.instrumentation.messaging.experimental.receive-telemetry.enabled");
-    return configured != null ? Boolean.parseBoolean(configured) : emitStableMessagingSemconv();
-  }
-
   @BeforeAll
   static void setUpAll() {
     kafka =

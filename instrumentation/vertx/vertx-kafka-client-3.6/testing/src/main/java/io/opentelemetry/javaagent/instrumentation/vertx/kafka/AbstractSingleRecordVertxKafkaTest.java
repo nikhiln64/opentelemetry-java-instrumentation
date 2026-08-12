@@ -77,7 +77,6 @@ public abstract class AbstractSingleRecordVertxKafkaTest extends AbstractVertxKa
                         .hasAttributesSatisfyingExactly(processAttributes(record)),
                 span -> span.hasName("consumer").hasParent(trace.getSpan(2)));
             producer.set(trace.getSpan(1));
-            producer.set(trace.getSpan(1));
           },
           trace ->
               trace.hasSpansSatisfyingExactly(
@@ -152,7 +151,6 @@ public abstract class AbstractSingleRecordVertxKafkaTest extends AbstractVertxKa
                         .hasException(new IllegalArgumentException("boom"))
                         .hasAttributesSatisfyingExactly(withErrorType(processAttributes(record))),
                 span -> span.hasName("consumer").hasParent(trace.getSpan(2)));
-            producer.set(trace.getSpan(1));
             producer.set(trace.getSpan(1));
           },
           trace ->
