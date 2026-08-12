@@ -45,7 +45,7 @@ class JmsDestinationAccessorInstrumentation implements TypeInstrumentation {
     @Nullable
     public static Scope onEnter() {
       Context currentContext = Java8BytecodeBridge.currentContext();
-      if (Boolean.TRUE.equals(receiveTelemetryEnabled)
+      if (Boolean.TRUE.equals(receiveTelemetryEnabled())
           || !JmsReceiveContextHolder.isInitialized(currentContext)) {
         return null;
       }

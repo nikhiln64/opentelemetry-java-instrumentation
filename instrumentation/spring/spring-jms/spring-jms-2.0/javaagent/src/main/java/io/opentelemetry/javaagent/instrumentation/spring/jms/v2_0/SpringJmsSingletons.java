@@ -16,7 +16,7 @@ public class SpringJmsSingletons {
   private static final String INSTRUMENTATION_NAME = "io.opentelemetry.spring-jms-2.0";
 
   @Nullable
-  static final Boolean receiveTelemetryEnabled =
+  private static final Boolean receiveTelemetryEnabled =
       ExperimentalConfig.get().messagingReceiveInstrumentationEnabled();
 
   private static final Instrumenter<MessageWithDestination, Void> listenerInstrumenter;
@@ -41,6 +41,11 @@ public class SpringJmsSingletons {
 
   public static Instrumenter<MessageWithDestination, Void> receiveInstrumenter() {
     return receiveInstrumenter;
+  }
+
+  @Nullable
+  public static Boolean receiveTelemetryEnabled() {
+    return receiveTelemetryEnabled;
   }
 
   private SpringJmsSingletons() {}
